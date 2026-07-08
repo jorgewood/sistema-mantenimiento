@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Mantenimiento - Colegio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        colegio: {
+                            azul: '#165DFF',
+                            verde: '#00B42A',
+                            naranja: '#FF7D00',
+                            rojo: '#E53E3E',
+                            gris: '#86909C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
+            @page {
+                size: 5.5in 8.5in;
+                margin: 0.25in;
+            }
+            body * {
+                visibility: hidden;
+            }
+            .formato-impresion,
+            .formato-impresion * {
+                visibility: visible !important;
+            }
+            .formato-impresion {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 5.25in;
+                font-size: 10.5px;
+                line-height: 1.35;
+                font-family: Arial, Helvetica, sans-serif;
+                margin: 0;
+                padding: 0;
+            }
+            .formato-impresion div {
+                page-break-inside: avoid;
+            }
+        }
+        .formato-impresion {
+            display: none;
+            max-width: 5.25in;
+            margin: 0 auto;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10.5px;
+        }
+        .recuadro {
+            border: 1px solid #000;
+            padding: 3px 5px;
+        }
+        .linea-firma {
+            border-bottom: 1px solid #000;
+            display: inline-block;
+            width: 210px;
+            margin: 2px 0;
+        }
+        .logo-impresion {
+            max-height: 50px;
+            max-width: 120px;
+            object-fit: contain;
+        }
+        .dia-horario {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+        .solicitud-propia {
+            border-left: 4px solid #3B82F6 !important;
+            background: #F0F7FF !important;
+        }
+        .solicitud-otra {
+            border-left: 4px solid #9CA3AF !important;
+            background: #F9FAFB !important;
+        }
+        .badge-propia {
+            background: #DBEAFE;
+            color: #1E40AF;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .badge-otra {
+            background: #F3F4F6;
+            color: #6B7280;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #165DFF;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            z-index: 9999;
+            display: none;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+        }
+        .toast.success {
+            background: #10B981;
+        }
+        .toast.error {
+            background: #EF4444;
+        }
+        .toast.info {
+            background: #3B82F6;
+        }
+        .toast.warning {
+            background: #F59E0B;
+        }
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .editando {
+            border: 2px solid #F59E0B !important;
+            background: #FFFBEB !important;
+        }
+        .evento-propio {
+            border-left: 4px solid #F59E0B !important;
+            background: #FFFBEB !important;
+        }
+        .evento-otro {
+            border-left: 4px solid #9CA3AF !important;
+            background: #F9FAFB !important;
+        }
+        .badge-evento-propio {
+            background: #FEF3C7;
+            color: #92400E;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .indicador-online {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .indicador-online.verde {
+            background: #22C55E;
+            animation: pulse 2s infinite;
+        }
+        .indicador-online.amarillo {
+            background: #EAB308;
+            animation: pulse 1s infinite;
+        }
+        .indicador-online.rojo {
+            background: #EF4444;
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .badge-nuevo {
+            animation: resaltar 0.5s ease;
+        }
+        @keyframes resaltar {
+            0% {
+                background: #FEF3C7;
+                transform: scale(1.02);
+            }
+            100% {
+                background: inherit;
+                transform: scale(1);
+            }
+        }
+        .scroll-custom {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .scroll-custom::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scroll-custom::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .scroll-custom::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        .scroll-custom::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Pantalla de Inicio de Sesión -->
+    <div id="pantalla-login" class="min-h-screen flex items-center justify-center bg-colegio-azul">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-2xl font-bold text-center mb-6 text-colegio-azul"><i class="fa fa-user-lock mr-2"></i>Acceso al Sistema</h2>
+            <div class="mb-4">
+                <label class="block mb-1 font-medium">Usuario</label>
+                <input type="text" id="usuario" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div class="mb-6">
+                <label class="block mb-1 font-medium">Contraseña</label>
+                <input type="password" id="clave" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <button onclick="iniciarSesion()" class="w-full bg-colegio-azul text-white py-2 rounded hover:bg-blue-700">Ingresar</button>
+            <p id="mensaje-error" class="text-red-500 text-center mt-3 hidden">Usuario o contraseña incorrectos</p>
+            <div class="loading" id="loading-login">
+                <div class="spinner"></div>
+                <p class="mt-2 text-gray-600">Verificando credenciales...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div id="sistema" class="hidden">
+        <nav class="bg-colegio-azul text-white shadow-md">
+            <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+                <h1 class="text-xl font-bold"><i class="fa fa-wrench mr-2"></i>Sistema de Mantenimiento Escolar</h1>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span id="usuario-activo" class="text-sm">Usuario:</span>
+                    <span id="indicador-conexion" class="text-xs px-3 py-1 rounded-full bg-green-500 text-white hidden">
+                        <span class="indicador-online verde"></span> En vivo
+                    </span>
+                    <button onclick="refrescarManual()" id="btn-refrescar" class="text-sm bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 hidden">
+                        <i class="fa fa-refresh mr-1"></i> Refrescar
+                    </button>
+                    <button onclick="mostrarModulo('configuracion')" id="btn-configuracion" class="text-sm bg-white text-colegio-azul px-2 py-1 rounded hidden">⚙️ Configuración</button>
+                    <button onclick="exportarTodoExcel()" id="btn-exportar" class="text-sm bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 hidden">
+                        <i class="fa fa-download mr-1"></i> Exportar Excel
+                    </button>
+                    <label for="archivoImportar" id="btn-importar" class="text-sm bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 cursor-pointer hidden">
+                        <i class="fa fa-upload mr-1"></i> Importar Excel
+                    </label>
+                    <input type="file" id="archivoImportar" accept=".xlsx,.xls" class="hidden" onchange="importarDesdeExcel(event)">
+                    <button onclick="mostrarModulo('usuarios')" id="btn-usuarios" class="text-sm bg-white text-colegio-azul px-2 py-1 rounded hidden">Gestionar Usuarios</button>
+                    <button onclick="cerrarSesion()" class="text-sm bg-red-500 px-2 py-1 rounded hover:bg-red-600">Salir</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row gap-4">
+            <aside class="w-full md:w-64 bg-white rounded-lg shadow p-4 h-fit">
+                <h3 class="font-bold text-lg mb-3 text-colegio-azul">Módulos</h3>
+                <ul class="space-y-2" id="menu-principal">
+                    <li><button onclick="mostrarModulo('solicitudes')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-file-text mr-2"></i>Solicitudes de Servicio</button></li>
+                    <li><button onclick="mostrarModulo('eventos')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-calendar mr-2"></i>Eventos y Requerimientos</button></li>
+                    <li id="opc-areas" class="hidden"><button onclick="mostrarModulo('areas')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-id-card mr-2"></i>Personal y Áreas</button></li>
+                    <li id="opc-incidencias" class="hidden"><button onclick="mostrarModulo('incidencias')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-exclamation-triangle mr-2"></i>Incidencias</button></li>
+                </ul>
+            </aside>
+
+            <main class="flex-1 bg-white rounded-lg shadow p-6">
+
+                <!-- Módulo Configuración -->
+                <section id="modulo-configuracion" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-azul">Configuración del Sistema</h2>
+                    <div class="border rounded p-5 bg-gray-50">
+                        <h3 class="font-semibold mb-3">Logo para los formatos de impresión</h3>
+                        <input type="file" id="inputLogo" accept="image/*" class="mb-3" onchange="guardarLogo()">
+                        <div class="mt-4">
+                            <p class="text-sm text-gray-600 mb-2">Vista previa:</p>
+                            <img id="vistaPreviaLogo" src="" alt="Logo" class="max-h-60 border p-2 bg-white rounded">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-3">Se recomienda imagen menor a 150 KB para mejor ajuste.</p>
+                    </div>
+                </section>
+
+                <!-- Módulo Gestión de Usuarios -->
+                <section id="modulo-usuarios" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-azul">Gestión de Usuarios</h2>
+                    <form id="formUsuarios" class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium">Nombre de Usuario</label>
+                            <input type="text" id="nuevoUsuario" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Contraseña</label>
+                            <input type="password" id="nuevaClave" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Tipo de Acceso</label>
+                            <select id="tipoAcceso" class="w-full border rounded px-3 py-2" required>
+                                <option value="comun">Solo solicitudes y eventos</option>
+                                <option value="mantenimiento">Acceso completo</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" class="bg-colegio-azul text-white px-4 py-2 rounded hover:bg-blue-700">Crear Usuario</button>
+                        </div>
+                    </form>
+                    <div id="listaUsuarios" class="border rounded p-3 bg-gray-50 text-sm"></div>
+                </section>
+
+                <!-- Módulo Personal y Áreas + Horarios -->
+                <section id="modulo-areas" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-azul">Personal, Puestos y Horarios</h2>
+                    <form id="formAreas" class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium">Nombre del Empleado</label>
+                            <input type="text" id="empleado" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Puesto</label>
+                            <input type="text" id="puesto" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Áreas Asignadas</label>
+                            <textarea id="areasAsignadas" rows="2" class="w-full border rounded px-3 py-2" required></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-2 font-medium">Horario Laboral (deja vacío si no labora ese día)</label>
+                            <div class="grid md:grid-cols-2 gap-3">
+                                <div class="dia-horario"><span class="w-20">Lunes:</span><input type="time" id="lunesEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="lunesSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Martes:</span><input type="time" id="martesEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="martesSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Miércoles:</span><input type="time" id="miercolesEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="miercolesSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Jueves:</span><input type="time" id="juevesEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="juevesSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Viernes:</span><input type="time" id="viernesEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="viernesSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Sábado:</span><input type="time" id="sabadoEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="sabadoSalida" class="border rounded px-2 py-1 w-28"></div>
+                                <div class="dia-horario"><span class="w-20">Domingo:</span><input type="time" id="domingoEntrada" class="border rounded px-2 py-1 w-28"><span>a</span><input type="time" id="domingoSalida" class="border rounded px-2 py-1 w-28"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">*Edita el registro cuando haya cambios temporales o por vacaciones.</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Funciones Principales</label>
+                            <textarea id="funciones" rows="2" class="w-full border rounded px-3 py-2" required></textarea>
+                        </div>
+                        <div class="md:col-span-2 flex gap-3">
+                            <button type="submit" id="btn-guardar-area" class="bg-colegio-azul text-white px-4 py-2 rounded hover:bg-blue-700">Guardar Registro</button>
+                            <button type="button" id="btn-cancelar-area" class="bg-gray-400 text-white px-4 py-2 rounded hidden" onclick="cancelarEdicion('areas')">Cancelar</button>
+                        </div>
+                    </form>
+                    <h3 class="font-semibold mb-2">Listado de Personal</h3>
+                    <div id="listaAreas" class="border rounded p-3 bg-gray-50 text-sm"></div>
+                </section>
+
+                <!-- Módulo Eventos -->
+                <section id="modulo-eventos" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-naranja">Eventos y Requerimientos</h2>
+                    <form id="formEventos" class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium">Fecha de Solicitud</label>
+                            <input type="date" id="fechaSolicitudEvento" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Fecha del Evento</label>
+                            <input type="date" id="fechaEvento" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Nombre del Evento</label>
+                            <input type="text" id="nombreEvento" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Solicitante</label>
+                            <input type="text" id="solicitanteEvento" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Lugar / Área</label>
+                            <input type="text" id="lugarEvento" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Requerimientos</label>
+                            <textarea id="requerimientos" rows="3" class="w-full border rounded px-3 py-2" required></textarea>
+                        </div>
+                        <div class="md:col-span-2 flex flex-wrap gap-3">
+                            <button type="submit" id="btn-guardar-evento" class="bg-colegio-naranja text-white px-4 py-2 rounded hover:bg-orange-600">Guardar</button>
+                            <button type="button" id="btn-cancelar-evento" class="bg-gray-400 text-white px-4 py-2 rounded hidden" onclick="cancelarEdicion('eventos')">Cancelar</button>
+                        </div>
+                    </form>
+                    <div id="listaEventos" class="border rounded p-3 bg-gray-50 text-sm scroll-custom">Sin eventos registrados</div>
+                </section>
+
+                <!-- Módulo Solicitudes -->
+                <section id="modulo-solicitudes" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-verde">Solicitudes de Compra / Servicio</h2>
+                    <form id="formSolicitudes" class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium">Nombre del Solicitante</label>
+                            <input type="text" id="solicitante" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Sección / Departamento</label>
+                            <input type="text" id="areaSolicitud" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Fecha de Solicitud</label>
+                            <input type="date" id="fechaSolicitud" class="w-full border rounded px-3 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Urgencia</label>
+                            <select id="urgencia" class="w-full border rounded px-3 py-2">
+                                <option>Baja</option>
+                                <option>Media</option>
+                                <option>Alta</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Descripción del Requerimiento</label>
+                            <textarea id="descripcion" rows="5" class="w-full border rounded px-3 py-2" required></textarea>
+                        </div>
+                        <div class="md:col-span-2 flex flex-wrap gap-3">
+                            <button type="submit" id="btn-guardar-solicitud" class="bg-colegio-verde text-white px-4 py-2 rounded hover:bg-green-700">Guardar</button>
+                            <button type="button" id="btn-cancelar-solicitud" class="bg-gray-400 text-white px-4 py-2 rounded hidden" onclick="cancelarEdicion('solicitudes')">Cancelar</button>
+                        </div>
+                    </form>
+                    <div id="listaSolicitudes" class="border rounded p-3 bg-gray-50 text-sm scroll-custom">Sin solicitudes</div>
+                </section>
+
+                <!-- Módulo Incidencias -->
+                <section id="modulo-incidencias" class="modulo hidden">
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-rojo">Incidencias del Personal</h2>
+                    <form id="formIncidencias" class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium">Empleado</label>
+                            <select id="empIncidencia" class="w-full border rounded px-3 py-2" required onchange="verificarHorarioEmpleado()">
+                                <option value="">Seleccionar empleado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block mb-1 font-medium">Tipo de Incidencia</label>
+                            <select id="tipoIncidencia" class="w-full border rounded px-3 py-2" onchange="mostrarCamposIncidencia()" required>
+                                <option value="">Seleccionar</option>
+                                <option value="permiso_dias">Permiso por días</option>
+                                <option value="permiso_horas">Permiso por horas</option>
+                                <option value="falta">Falta</option>
+                                <option value="retardo">Retardo</option>
+                                <option value="incapacidad">Incapacidad</option>
+                                <option value="vacaciones">Vacaciones</option>
+                            </select>
+                        </div>
+                        <div id="campoFechaInicio" class="hidden">
+                            <label class="block mb-1 font-medium">Fecha de Inicio</label>
+                            <input type="date" id="fechaInicio" class="w-full border rounded px-3 py-2" onchange="analizarHorarioPermiso()">
+                        </div>
+                        <div id="campoFechaFin" class="hidden">
+                            <label class="block mb-1 font-medium">Fecha de Fin</label>
+                            <input type="date" id="fechaFin" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div id="campoHoras" class="hidden">
+                            <label class="block mb-1 font-medium">Cantidad de Horas</label>
+                            <input type="number" id="cantidadHoras" min="0.5" step="0.5" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div id="campoHora" class="hidden">
+                            <label class="block mb-1 font-medium">Hora de salida / llegada</label>
+                            <input type="time" id="horaIncidencia" class="w-full border rounded px-3 py-2" onchange="analizarHorarioPermiso()">
+                            <div id="infoHorario" class="text-xs text-blue-600 mt-1 hidden"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 font-medium">Observaciones</label>
+                            <textarea id="obsIncidencia" rows="2" class="w-full border rounded px-3 py-2"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" class="bg-colegio-rojo text-white px-4 py-2 rounded hover:bg-red-700">Registrar Incidencia</button>
+                        </div>
+                    </form>
+                    <h3 class="font-semibold mb-2">Listado de Incidencias</h3>
+                    <div id="listaIncidencias" class="border rounded p-3 bg-gray-50 text-sm scroll-custom">Sin incidencias</div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Área para formatos de impresión -->
+    <div id="formatoImpresion" class="formato-impresion"></div>
+
+    <script>
+        // ===== CONFIGURACIÓN =====
+        const API_URL = window.location.origin;
+        let datos = {
+            usuarios: [],
+            areas: [],
+            eventos: [],
+            solicitudes: [],
+            incidencias: [],
+            logo: ""
+        };
+        let usuarioActual = null;
+        let indiceEdicion = null;
+        let idEditando = null;
+        let tipoEditando = null;
+        let intervaloActualizacion = null;
+        const WHATSAPP_NUMERO = "529993937934";
+        const TIEMPO_ACTUALIZACION = 3000; // 3 segundos
+
+        // ===== FUNCIONES DE API =====
+        async function apiGet(endpoint) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error en GET:', error);
+                return null;
+            }
+        }
+
+        async function apiPost(endpoint, data) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error en POST:', error);
+                return null;
+            }
+        }
+
+        async function apiPut(endpoint, data) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error en PUT:', error);
+                return null;
+            }
+        }
+
+        async function apiDelete(endpoint) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error en DELETE:', error);
+                return null;
+            }
+        }
+
+        // ===== TOAST NOTIFICATIONS =====
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.className = 'toast';
+            }, 4000);
+        }
+
+        // ===== CARGAR DATOS DEL SERVIDOR =====
+        async function cargarDatosServidor() {
+            const data = await apiGet('/api/datos');
+            if (data) {
+                datos = data;
+                return true;
+            }
+            return false;
+        }
+
+        // ===== LOGO =====
+        function guardarLogo() {
+            const archivo = document.getElementById('inputLogo').files[0];
+            if (!archivo) return;
+            const lector = new FileReader();
+            lector.onload = async e => {
+                const resultado = await apiPost('/api/logo', { logo: e.target.result });
+                if (resultado && resultado.success) {
+                    datos.logo = e.target.result;
+                    document.getElementById('vistaPreviaLogo').src = datos.logo;
+                    showToast('Logo guardado correctamente', 'success');
+                }
+            };
+            lector.readAsDataURL(archivo);
+        }
+
+        function cargarLogoGuardado() {
+            if (datos.logo) document.getElementById('vistaPreviaLogo').src = datos.logo;
+        }
+
+        // ===== SESIÓN =====
+        async function iniciarSesion() {
+            const usu = document.getElementById('usuario').value.trim();
+            const cla = document.getElementById('clave').value.trim();
+
+            if (!usu || !cla) {
+                showToast('Ingresa usuario y contraseña', 'error');
+                return;
+            }
+
+            document.getElementById('loading-login').classList.add('active');
+            document.getElementById('mensaje-error').classList.add('hidden');
+
+            try {
+                const success = await cargarDatosServidor();
+                if (!success) {
+                    document.getElementById('loading-login').classList.remove('active');
+                    showToast('Error conectando con el servidor', 'error');
+                    return;
+                }
+
+                const encontrado = datos.usuarios.find(u => u.usuario === usu && u.clave === cla);
+
+                document.getElementById('loading-login').classList.remove('active');
+
+                if (encontrado) {
+                    usuarioActual = encontrado;
+                    document.getElementById('pantalla-login').classList.add('hidden');
+                    document.getElementById('sistema').classList.remove('hidden');
+                    document.getElementById('usuario-activo').textContent = `Usuario: ${encontrado.usuario}`;
+
+                    document.getElementById('opc-areas').classList.add('hidden');
+                    document.getElementById('opc-incidencias').classList.add('hidden');
+                    document.getElementById('btn-usuarios').classList.add('hidden');
+                    document.getElementById('btn-configuracion').classList.add('hidden');
+                    document.getElementById('btn-exportar').classList.add('hidden');
+                    document.getElementById('btn-importar').classList.add('hidden');
+                    document.getElementById('btn-refrescar').classList.add('hidden');
+                    document.getElementById('indicador-conexion').classList.add('hidden');
+
+                    if (encontrado.tipo === "mantenimiento") {
+                        document.getElementById('opc-areas').classList.remove('hidden');
+                        document.getElementById('opc-incidencias').classList.remove('hidden');
+                        document.getElementById('btn-usuarios').classList.remove('hidden');
+                        document.getElementById('btn-configuracion').classList.remove('hidden');
+                        document.getElementById('btn-exportar').classList.remove('hidden');
+                        document.getElementById('btn-importar').classList.remove('hidden');
+                        cargarLogoGuardado();
+                    }
+
+                    // Mostrar botones de actualización
+                    document.getElementById('btn-refrescar').classList.remove('hidden');
+                    document.getElementById('indicador-conexion').classList.remove('hidden');
+
+                    cargarListaEmpleados();
+                    mostrarModulo('solicitudes');
+                    actualizarListas();
+                    mostrarBotonBackup();
+                    iniciarActualizacionAutomatica();
+                    showToast(`Bienvenido ${encontrado.usuario}`, 'success');
+                } else {
+                    document.getElementById('mensaje-error').classList.remove('hidden');
+                    showToast('Usuario o contraseña incorrectos', 'error');
+                }
+            } catch (error) {
+                document.getElementById('loading-login').classList.remove('active');
+                showToast('Error al iniciar sesión', 'error');
+                console.error(error);
+            }
+        }
+
+        function cerrarSesion() {
+            detenerActualizacionAutomatica();
+            usuarioActual = null;
+            document.getElementById('sistema').classList.add('hidden');
+            document.getElementById('pantalla-login').classList.remove('hidden');
+            document.getElementById('mensaje-error').classList.add('hidden');
+            document.getElementById('usuario').value = "";
+            document.getElementById('clave').value = "";
+            document.getElementById('btn-backup').style.display = 'none';
+            document.getElementById('btn-refrescar').classList.add('hidden');
+            document.getElementById('indicador-conexion').classList.add('hidden');
+            showToast('Sesión cerrada', 'info');
+        }
+
+        function mostrarModulo(id) {
+            document.querySelectorAll('.modulo').forEach(m => m.classList.add('hidden'));
+            document.getElementById('modulo-' + id).classList.remove('hidden');
+            cancelarEdicion(id);
+            if (id === 'incidencias') cargarListaEmpleados();
+            mostrarBotonBackup();
+        }
+
+        // ===== ACTUALIZACIÓN AUTOMÁTICA =====
+        async function verificarActualizaciones() {
+            try {
+                const estadoAnterior = {
+                    solicitudes: JSON.stringify(datos.solicitudes || []),
+                    eventos: JSON.stringify(datos.eventos || []),
+                    areas: JSON.stringify(datos.areas || []),
+                    incidencias: JSON.stringify(datos.incidencias || [])
+                };
+
+                const nuevosDatos = await apiGet('/api/datos');
+                if (!nuevosDatos) return;
+
+                const hayCambios =
+                    JSON.stringify(nuevosDatos.solicitudes || []) !== estadoAnterior.solicitudes ||
+                    JSON.stringify(nuevosDatos.eventos || []) !== estadoAnterior.eventos;
+
+                if (hayCambios) {
+                    const cambios = {
+                        solicitudes: (nuevosDatos.solicitudes || []).length - (datos.solicitudes || []).length,
+                        eventos: (nuevosDatos.eventos || []).length - (datos.eventos || []).length
+                    };
+
+                    datos = nuevosDatos;
+                    actualizarListas();
+
+                    // Mostrar notificación de cambios
+                    let mensaje = '📥 Actualización automática: ';
+                    let partes = [];
+                    if (cambios.solicitudes !== 0) {
+                        partes.push(`${Math.abs(cambios.solicitudes)} solicitud(es) ${cambios.solicitudes > 0 ? 'nueva(s)' : 'eliminada(s)'}`);
+                    }
+                    if (cambios.eventos !== 0) {
+                        partes.push(`${Math.abs(cambios.eventos)} evento(s) ${cambios.eventos > 0 ? 'nuevo(s)' : 'eliminado(s)'}`);
+                    }
+                    if (partes.length > 0) {
+                        showToast(mensaje + partes.join(', '), 'info');
+                    } else {
+                        showToast('📥 Datos actualizados', 'info');
+                    }
+                }
+            } catch (error) {
+                console.error('Error verificando actualizaciones:', error);
+            }
+        }
+
+        function iniciarActualizacionAutomatica() {
+            if (intervaloActualizacion) {
+                clearInterval(intervaloActualizacion);
+            }
+            intervaloActualizacion = setInterval(verificarActualizaciones, TIEMPO_ACTUALIZACION);
+            console.log(`✅ Actualización automática iniciada (cada ${TIEMPO_ACTUALIZACION/1000} segundos)`);
+        }
+
+        function detenerActualizacionAutomatica() {
+            if (intervaloActualizacion) {
+                clearInterval(intervaloActualizacion);
+                intervaloActualizacion = null;
+                console.log('⏹️ Actualización automática detenida');
+            }
+        }
+
+        async function refrescarManual() {
+            const btn = document.getElementById('btn-refrescar');
+            btn.innerHTML = '⏳ Cargando...';
+            btn.disabled = true;
+            await cargarDatosServidor();
+            actualizarListas();
+            btn.innerHTML = '<i class="fa fa-refresh mr-1"></i> Refrescar';
+            btn.disabled = false;
+            showToast('✅ Datos actualizados manualmente', 'success');
+        }
+
+        // ===== HORARIOS Y ANÁLISIS =====
+        function cargarListaEmpleados() {
+            const select = document.getElementById('empIncidencia');
+            select.innerHTML = '<option value="">Seleccionar empleado</option>';
+            datos.areas.forEach((emp, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = emp.nombre;
+                select.appendChild(opt);
+            });
+        }
+
+        function verificarHorarioEmpleado() {
+            document.getElementById('infoHorario').classList.add('hidden');
+        }
+
+        function analizarHorarioPermiso() {
+            const idxEmp = parseInt(document.getElementById('empIncidencia').value);
+            const fecha = document.getElementById('fechaInicio').value;
+            const hora = document.getElementById('horaIncidencia').value;
+            if (isNaN(idxEmp) || !fecha || !hora) return;
+
+            const emp = datos.areas[idxEmp];
+            const diaSemana = new Date(fecha).getDay();
+            const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+            const horario = emp.horario?.[dias[diaSemana]] || { entrada: null, salida: null };
+
+            if (!horario.entrada || !horario.salida) {
+                document.getElementById('infoHorario').textContent = "⚠️ No hay horario registrado para este día";
+                document.getElementById('infoHorario').classList.remove('hidden');
+                return;
+            }
+
+            const convertir = h => new Date(`2000-01-01T${h}`);
+            const hEnt = convertir(horario.entrada);
+            const hSal = convertir(horario.salida);
+            const hAct = convertir(hora);
+
+            let estado = "";
+            if (hAct < hEnt) estado = "⏱️ Antes de su hora de entrada";
+            else if (hAct > hSal) estado = "⏱️ Después de su hora de salida";
+            else estado = "⏱️ Dentro de su jornada laboral";
+
+            document.getElementById('infoHorario').textContent = `${estado} | Horario: ${horario.entrada} a ${horario.salida}`;
+            document.getElementById('infoHorario').classList.remove('hidden');
+        }
+
+        function mostrarCamposIncidencia() {
+            const tipo = document.getElementById('tipoIncidencia').value;
+            document.getElementById('campoFechaInicio').classList.add('hidden');
+            document.getElementById('campoFechaFin').classList.add('hidden');
+            document.getElementById('campoHoras').classList.add('hidden');
+            document.getElementById('campoHora').classList.add('hidden');
+            document.getElementById('infoHorario').classList.add('hidden');
+
+            if (["permiso_dias", "incapacidad", "vacaciones", "falta"].includes(tipo)) {
+                document.getElementById('campoFechaInicio').classList.remove('hidden');
+                document.getElementById('campoFechaFin').classList.remove('hidden');
+            }
+            if (["permiso_horas", "retardo"].includes(tipo)) {
+                document.getElementById('campoFechaInicio').classList.remove('hidden');
+                document.getElementById('campoHoras').classList.remove('hidden');
+                document.getElementById('campoHora').classList.remove('hidden');
+            }
+        }
+
+        // ===== IMPRESIÓN =====
+        function imprimirSolicitud(indice) {
+            const s = datos.solicitudes[indice];
+            const logoHtml = datos.logo ? `<img src="${datos.logo}" class="logo-impresion">` : `<span>LOGO</span>`;
+            const contenido = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">${logoHtml}</div>
+                <h2 style="text-align:center; font-weight:bold; font-size:14px;">SOLICITUD DE COMPRA</h2>
+                <h3 style="text-align:center; font-size:11px; margin:4px 0 8px;">MANTENIMIENTO</h3>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Fecha:</span><span class="recuadro" style="width:85px;">${s.fecha}</span></div>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Solicitante:</span><span class="recuadro" style="width:210px;">${s.solicitante}</span></div>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Área:</span><span class="recuadro" style="width:210px;">${s.area}</span></div>
+                <div style="margin:6px 0;"><span style="font-weight:bold;">Descripción:</span><div class="recuadro" style="min-height:100px; margin-top:3px;">${s.descripcion}</div></div>
+                <div style="margin:8px 0;"><span>Firma:</span><br><span class="linea-firma"></span></div>
+            `;
+            document.getElementById('formatoImpresion').innerHTML = contenido;
+            document.getElementById('formatoImpresion').style.display = 'block';
+            window.print();
+            document.getElementById('formatoImpresion').style.display = 'none';
+        }
+
+        function imprimirEvento(indice) {
+            const e = datos.eventos[indice];
+            const logoHtml = datos.logo ? `<img src="${datos.logo}" class="logo-impresion">` : `<span>LOGO</span>`;
+            const contenido = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">${logoHtml}</div>
+                <h2 style="text-align:center; font-weight:bold; font-size:14px;">SOLICITUD PARA EVENTO</h2>
+                <h3 style="text-align:center; font-size:11px; margin:4px 0 8px;">MANTENIMIENTO</h3>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Fecha solicitud:</span><span class="recuadro" style="width:85px;">${e.fechaSolicitud}</span></div>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Fecha evento:</span><span class="recuadro" style="width:85px;">${e.fechaEvento}</span></div>
+                <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Nombre:</span><span class="recuadro" style="width:210px;">${e.nombre}</span></div>
+                <div style="margin:6px 0;"><span style="font-weight:bold;">Requerimientos:</span><div class="recuadro" style="min-height:100px; margin-top:3px;">${e.requerimientos}</div></div>
+            `;
+            document.getElementById('formatoImpresion').innerHTML = contenido;
+            document.getElementById('formatoImpresion').style.display = 'block';
+            window.print();
+            document.getElementById('formatoImpresion').style.display = 'none';
+        }
+
+        // ===== FORMULARIOS =====
+        document.getElementById('formAreas').addEventListener('submit', async e => {
+            e.preventDefault();
+            const horario = {
+                lunes: { entrada: document.getElementById('lunesEntrada').value, salida: document.getElementById('lunesSalida').value },
+                martes: { entrada: document.getElementById('martesEntrada').value, salida: document.getElementById('martesSalida').value },
+                miercoles: { entrada: document.getElementById('miercolesEntrada').value, salida: document.getElementById('miercolesSalida').value },
+                jueves: { entrada: document.getElementById('juevesEntrada').value, salida: document.getElementById('juevesSalida').value },
+                viernes: { entrada: document.getElementById('viernesEntrada').value, salida: document.getElementById('viernesSalida').value },
+                sabado: { entrada: document.getElementById('sabadoEntrada').value, salida: document.getElementById('sabadoSalida').value },
+                domingo: { entrada: document.getElementById('domingoEntrada').value, salida: document.getElementById('domingoSalida').value }
+            };
+            const reg = {
+                nombre: document.getElementById('empleado').value.trim(),
+                puesto: document.getElementById('puesto').value,
+                areas: document.getElementById('areasAsignadas').value,
+                funciones: document.getElementById('funciones').value,
+                horario: horario
+            };
+
+            const resultado = await apiPost('/api/areas', reg);
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                cancelarEdicion('areas');
+                actualizarListas();
+                showToast('Personal registrado correctamente', 'success');
+            }
+        });
+
+        document.getElementById('formIncidencias').addEventListener('submit', async e => {
+            e.preventDefault();
+            const idxEmp = parseInt(document.getElementById('empIncidencia').value);
+            const tipo = document.getElementById('tipoIncidencia').value;
+            const emp = datos.areas[idxEmp];
+            const inc = {
+                empleado: emp.nombre,
+                puesto: emp.puesto,
+                tipo: tipo,
+                fechaInicio: document.getElementById('fechaInicio').value || "",
+                fechaFin: document.getElementById('fechaFin').value || "",
+                horas: document.getElementById('cantidadHoras').value || "",
+                hora: document.getElementById('horaIncidencia').value || "",
+                observaciones: document.getElementById('obsIncidencia').value || ""
+            };
+
+            const resultado = await apiPost('/api/incidencias', inc);
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                e.target.reset();
+                mostrarCamposIncidencia();
+                document.getElementById('infoHorario').classList.add('hidden');
+                actualizarListas();
+                showToast('Incidencia registrada correctamente', 'success');
+            }
+        });
+
+        document.getElementById('formEventos').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const evento = {
+                fechaSolicitud: document.getElementById('fechaSolicitudEvento').value,
+                fechaEvento: document.getElementById('fechaEvento').value,
+                nombre: document.getElementById('nombreEvento').value,
+                solicitante: document.getElementById('solicitanteEvento').value,
+                lugar: document.getElementById('lugarEvento').value,
+                requerimientos: document.getElementById('requerimientos').value,
+                usuarioCreador: usuarioActual ? usuarioActual.usuario : 'anonimo'
+            };
+
+            let resultado;
+
+            if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'evento') {
+                const eventoOriginal = datos.eventos[indiceEdicion];
+                if (usuarioActual.tipo !== 'mantenimiento' && eventoOriginal.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para modificar este evento', 'error');
+                    return;
+                }
+
+                resultado = await apiPut(`/api/eventos/${idEditando}`, evento);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    cancelarEdicion('eventos');
+                    actualizarListas();
+                    showToast('✅ Evento actualizado correctamente', 'success');
+                } else {
+                    showToast('❌ Error al actualizar evento', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            resultado = await apiPost('/api/eventos', evento);
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                document.getElementById('formEventos').reset();
+                actualizarListas();
+                showToast('✅ Evento creado correctamente', 'success');
+            } else {
+                showToast('❌ Error al crear evento', 'error');
+            }
+        });
+
+        document.getElementById('formSolicitudes').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const solicitud = {
+                solicitante: document.getElementById('solicitante').value,
+                area: document.getElementById('areaSolicitud').value,
+                fecha: document.getElementById('fechaSolicitud').value,
+                urgencia: document.getElementById('urgencia').value,
+                descripcion: document.getElementById('descripcion').value,
+                usuarioCreador: usuarioActual ? usuarioActual.usuario : 'anonimo'
+            };
+
+            let resultado;
+
+            if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'solicitud') {
+                const solicitudOriginal = datos.solicitudes[indiceEdicion];
+                if (usuarioActual.tipo !== 'mantenimiento' && solicitudOriginal.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para modificar esta solicitud', 'error');
+                    return;
+                }
+
+                resultado = await apiPut(`/api/solicitudes/${idEditando}`, solicitud);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    cancelarEdicion('solicitudes');
+                    actualizarListas();
+                    showToast('✅ Solicitud actualizada correctamente', 'success');
+                } else {
+                    showToast('❌ Error al actualizar solicitud', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            resultado = await apiPost('/api/solicitudes', solicitud);
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                document.getElementById('formSolicitudes').reset();
+                actualizarListas();
+                showToast('✅ Solicitud creada correctamente', 'success');
+            } else {
+                showToast('❌ Error al crear solicitud', 'error');
+            }
+        });
+
+        document.getElementById('formUsuarios').addEventListener('submit', async e => {
+            e.preventDefault();
+            const nuevo = {
+                usuario: document.getElementById('nuevoUsuario').value.trim(),
+                clave: document.getElementById('nuevaClave').value.trim(),
+                tipo: document.getElementById('tipoAcceso').value
+            };
+
+            const resultado = await apiPost('/api/usuarios', nuevo);
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                e.target.reset();
+                actualizarListas();
+                showToast('Usuario creado correctamente', 'success');
+            } else if (resultado && resultado.error) {
+                showToast(resultado.error, 'error');
+            }
+        });
+
+        // ===== EDICIÓN =====
+        function editarRegistro(modulo, indice) {
+            if (modulo === 'solicitudes') {
+                const reg = datos.solicitudes[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && reg.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para editar esta solicitud', 'error');
+                    return;
+                }
+
+                indiceEdicion = indice;
+                idEditando = reg.id || reg._id;
+                tipoEditando = 'solicitud';
+
+                if (!idEditando) {
+                    showToast('❌ Error: ID de solicitud no encontrado', 'error');
+                    return;
+                }
+
+                document.getElementById('solicitante').value = reg.solicitante;
+                document.getElementById('areaSolicitud').value = reg.area;
+                document.getElementById('fechaSolicitud').value = reg.fecha;
+                document.getElementById('urgencia').value = reg.urgencia;
+                document.getElementById('descripcion').value = reg.descripcion;
+
+                document.getElementById('btn-guardar-solicitud').textContent = "Actualizar";
+                document.getElementById('btn-cancelar-solicitud').classList.remove('hidden');
+                document.getElementById('formSolicitudes').classList.add('editando');
+                showToast('✏️ Editando solicitud', 'info');
+                return;
+            }
+
+            if (modulo === 'eventos') {
+                const reg = datos.eventos[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && reg.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para editar este evento', 'error');
+                    return;
+                }
+
+                indiceEdicion = indice;
+                idEditando = reg.id || reg._id;
+                tipoEditando = 'evento';
+
+                if (!idEditando) {
+                    showToast('❌ Error: ID de evento no encontrado', 'error');
+                    return;
+                }
+
+                document.getElementById('fechaSolicitudEvento').value = reg.fechaSolicitud;
+                document.getElementById('fechaEvento').value = reg.fechaEvento;
+                document.getElementById('nombreEvento').value = reg.nombre;
+                document.getElementById('solicitanteEvento').value = reg.solicitante;
+                document.getElementById('lugarEvento').value = reg.lugar;
+                document.getElementById('requerimientos').value = reg.requerimientos;
+
+                document.getElementById('btn-guardar-evento').textContent = "Actualizar";
+                document.getElementById('btn-cancelar-evento').classList.remove('hidden');
+                document.getElementById('formEventos').classList.add('editando');
+                showToast('✏️ Editando evento', 'info');
+                return;
+            }
+
+            if (modulo === 'areas') {
+                indiceEdicion = indice;
+                const reg = datos.areas[indice];
+                document.getElementById('empleado').value = reg.nombre;
+                document.getElementById('puesto').value = reg.puesto;
+                document.getElementById('areasAsignadas').value = reg.areas;
+                document.getElementById('funciones').value = reg.funciones;
+                if (reg.horario) {
+                    document.getElementById('lunesEntrada').value = reg.horario.lunes.entrada || "";
+                    document.getElementById('lunesSalida').value = reg.horario.lunes.salida || "";
+                    document.getElementById('martesEntrada').value = reg.horario.martes.entrada || "";
+                    document.getElementById('martesSalida').value = reg.horario.martes.salida || "";
+                    document.getElementById('miercolesEntrada').value = reg.horario.miercoles.entrada || "";
+                    document.getElementById('miercolesSalida').value = reg.horario.miercoles.salida || "";
+                    document.getElementById('juevesEntrada').value = reg.horario.jueves.entrada || "";
+                    document.getElementById('juevesSalida').value = reg.horario.jueves.salida || "";
+                    document.getElementById('viernesEntrada').value = reg.horario.viernes.entrada || "";
+                    document.getElementById('viernesSalida').value = reg.horario.viernes.salida || "";
+                    document.getElementById('sabadoEntrada').value = reg.horario.sabado.entrada || "";
+                    document.getElementById('sabadoSalida').value = reg.horario.sabado.salida || "";
+                    document.getElementById('domingoEntrada').value = reg.horario.domingo.entrada || "";
+                    document.getElementById('domingoSalida').value = reg.horario.domingo.salida || "";
+                }
+                document.getElementById('btn-guardar-area').textContent = "Actualizar";
+                document.getElementById('btn-cancelar-area').classList.remove('hidden');
+            }
+        }
+
+        function cancelarEdicion(modulo) {
+            indiceEdicion = null;
+            idEditando = null;
+            tipoEditando = null;
+
+            document.getElementById('formSolicitudes').classList.remove('editando');
+            document.getElementById('formEventos').classList.remove('editando');
+
+            if (modulo === 'areas') {
+                document.getElementById('formAreas').reset();
+                document.getElementById('btn-guardar-area').textContent = "Guardar Registro";
+                document.getElementById('btn-cancelar-area').classList.add('hidden');
+            } else if (modulo === 'solicitudes') {
+                document.getElementById('formSolicitudes').reset();
+                document.getElementById('btn-guardar-solicitud').textContent = "Guardar";
+                document.getElementById('btn-cancelar-solicitud').classList.add('hidden');
+            } else if (modulo === 'eventos') {
+                document.getElementById('formEventos').reset();
+                document.getElementById('btn-guardar-evento').textContent = "Guardar";
+                document.getElementById('btn-cancelar-evento').classList.add('hidden');
+            }
+        }
+
+        // ===== ELIMINACIÓN =====
+        async function eliminarRegistro(modulo, indice) {
+            if (modulo === 'solicitudes') {
+                const solicitud = datos.solicitudes[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && solicitud.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para eliminar esta solicitud', 'error');
+                    return;
+                }
+
+                if (!confirm(`¿Seguro que deseas eliminar esta solicitud de "${solicitud.solicitante}"?`)) return;
+
+                const idReal = solicitud.id || solicitud._id;
+                if (!idReal) {
+                    showToast('❌ Error: ID de solicitud no encontrado', 'error');
+                    return;
+                }
+
+                const resultado = await apiDelete(`/api/solicitudes/${idReal}`);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    actualizarListas();
+                    showToast('✅ Solicitud eliminada correctamente', 'success');
+                } else {
+                    showToast('❌ Error al eliminar solicitud', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            if (modulo === 'eventos') {
+                const evento = datos.eventos[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && evento.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para eliminar este evento', 'error');
+                    return;
+                }
+
+                if (!confirm(`¿Seguro que deseas eliminar el evento "${evento.nombre}"?`)) return;
+
+                const idReal = evento.id || evento._id;
+                if (!idReal) {
+                    showToast('❌ Error: ID de evento no encontrado', 'error');
+                    return;
+                }
+
+                const resultado = await apiDelete(`/api/eventos/${idReal}`);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    actualizarListas();
+                    showToast('✅ Evento eliminado correctamente', 'success');
+                } else {
+                    showToast('❌ Error al eliminar evento', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            if (usuarioActual.tipo !== 'mantenimiento') {
+                showToast('❌ Solo el administrador puede eliminar este registro', 'error');
+                return;
+            }
+
+            const nombres = {
+                'areas': 'registro de personal',
+                'incidencias': 'incidencia',
+                'usuarios': 'usuario'
+            };
+
+            if (modulo === 'usuarios') {
+                const usuario = datos.usuarios[indice];
+                if (usuario.usuario === 'admin') {
+                    showToast('❌ No se puede eliminar el usuario administrador principal', 'error');
+                    return;
+                }
+                if (usuario.usuario === usuarioActual.usuario) {
+                    showToast('❌ No puedes eliminar tu propio usuario', 'error');
+                    return;
+                }
+            }
+
+            if (!confirm(`¿Seguro que deseas eliminar este ${nombres[modulo] || 'registro'}?`)) return;
+
+            datos[modulo].splice(indice, 1);
+            const resultado = await apiPost('/api/datos/completos', datos);
+
+            if (resultado && resultado.success) {
+                await cargarDatosServidor();
+                actualizarListas();
+                showToast(`✅ ${nombres[modulo] || 'Registro'} eliminado correctamente`, 'success');
+            } else {
+                showToast('❌ Error al eliminar, recargando datos...', 'error');
+                await cargarDatosServidor();
+            }
+        }
+
+        function enviarSolicitudWhatsApp(indice) {
+            const s = datos.solicitudes[indice];
+            const msg = `*SOLICITUD DE COMPRA*%0AFecha: ${s.fecha}%0ASolicitante: ${s.solicitante}%0AÁrea: ${s.area}%0AUrgencia: ${s.urgencia}%0A%0A*Descripción:*%0A${s.descripcion}`;
+            window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`, '_blank');
+        }
+
+        function enviarEventoWhatsApp(indice) {
+            const e = datos.eventos[indice];
+            const msg = `*SOLICITUD DE EVENTO*%0ASolicitud: ${e.fechaSolicitud}%0AEvento: ${e.fechaEvento}%0ANombre: ${e.nombre}%0ASolicitante: ${e.solicitante}%0ALugar: ${e.lugar}%0A%0A*Requerimientos:*%0A${e.requerimientos}`;
+            window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`, '_blank');
+        }
+
+        // ===== ACTUALIZAR LISTAS =====
+        function actualizarListas() {
+            // Usuarios
+            document.getElementById('listaUsuarios').innerHTML = datos.usuarios.length ?
+                datos.usuarios.map((u, i) =>
+                    `<div class="mb-2 p-2 border-b">${i+1}. <strong>${u.usuario}</strong> | Tipo: ${u.tipo} <button onclick="eliminarRegistro('usuarios',${i})" class="text-red-500 text-xs ml-3">Eliminar</button></div>`
+                ).join('') :
+                'Sin usuarios';
+
+            // Áreas
+            document.getElementById('listaAreas').innerHTML = datos.areas.length ?
+                datos.areas.map((p, i) =>
+                    `<div class="mb-3 p-3 border rounded bg-white">
+                    <strong>${p.nombre}</strong> - ${p.puesto}<br>
+                    Áreas: ${p.areas}<br>
+                    <small>Horario: Lunes ${p.horario.lunes.entrada||'Libre'} a ${p.horario.lunes.salida||''} | Martes ${p.horario.martes.entrada||'Libre'} a ${p.horario.martes.salida||''}...</small><br>
+                    <button onclick="editarRegistro('areas',${i})" class="text-blue-600 text-sm mt-2 mr-3">Editar</button>
+                    <button onclick="eliminarRegistro('areas',${i})" class="text-red-500 text-sm mt-2">Eliminar</button>
+                </div>`
+                ).join('') :
+                'Sin personal registrado';
+
+            // Solicitudes
+            actualizarListaSolicitudes();
+
+            // Eventos
+            actualizarListaEventos();
+
+            // Incidencias
+            document.getElementById('listaIncidencias').innerHTML = datos.incidencias.length ?
+                datos.incidencias.map((inc, i) => {
+                    let detalle = `Tipo: ${inc.tipo.replace('_', ' ')}<br>`;
+                    if (inc.fechaInicio) detalle += `Inicio: ${inc.fechaInicio} `;
+                    if (inc.fechaFin) detalle += `| Fin: ${inc.fechaFin}<br>`;
+                    if (inc.hora) detalle += `Hora: ${inc.hora} `;
+                    if (inc.horas) detalle += `| Horas: ${inc.horas}<br>`;
+                    if (inc.observaciones) detalle += `Observaciones: ${inc.observaciones}<br>`;
+                    return `<div class="mb-3 p-3 border rounded bg-white">
+                        <strong>${inc.empleado}</strong> - ${inc.puesto}<br>
+                        ${detalle}
+                        <button onclick="eliminarRegistro('incidencias', ${i})" class="text-red-500 text-sm mt-2">Eliminar</button>
+                    </div>`;
+                }).join('') :
+                'Sin incidencias registradas';
+        }
+
+        function actualizarListaSolicitudes() {
+            const contenedor = document.getElementById('listaSolicitudes');
+            const esAdmin = usuarioActual && usuarioActual.tipo === 'mantenimiento';
+
+            if (datos.solicitudes.length === 0) {
+                contenedor.innerHTML = esAdmin ? 'Sin solicitudes registradas' : 'No hay solicitudes creadas';
+                return;
+            }
+
+            if (esAdmin) {
+                contenedor.innerHTML = datos.solicitudes.map((s, i) => {
+                    const esPropia = s.usuarioCreador === usuarioActual.usuario;
+                    return `<div class="mb-3 p-3 border rounded bg-white ${esPropia ? 'solicitud-propia' : 'solicitud-otra'}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <strong>${s.solicitante}</strong> | Área: ${s.area}<br>
+                                Fecha: ${s.fecha} | Urgencia: <span class="font-semibold ${s.urgencia === 'Alta' ? 'text-red-600' : s.urgencia === 'Media' ? 'text-yellow-600' : 'text-green-600'}">${s.urgencia}</span><br>
+                                ${s.usuarioCreador ? `<small class="text-gray-500">👤 Creado por: ${s.usuarioCreador}</small><br>` : ''}
+                                ${s.fechaCreacion ? `<small class="text-gray-400">📅 ${new Date(s.fechaCreacion).toLocaleString()}</small>` : ''}
+                                ${s.id ? `<small class="text-gray-400">🆔 ID: ${s.id}</small>` : ''}
+                            </div>
+                            ${esPropia ? '<span class="badge-propia">Tu solicitud</span>' : '<span class="badge-otra">De otro usuario</span>'}
+                        </div>
+                        <div class="mt-2">
+                            <button onclick="editarRegistro('solicitudes',${i})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                            <button onclick="enviarSolicitudWhatsApp(${i})" class="text-green-600 text-sm mt-2 mr-3">📱 WhatsApp</button>
+                            <button onclick="imprimirSolicitud(${i})" class="text-indigo-600 text-sm mt-2 mr-3">🖨️ Imprimir</button>
+                            <button onclick="eliminarRegistro('solicitudes',${i})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                        </div>
+                    </div>`;
+                }).join('');
+                return;
+            }
+
+            const misSolicitudes = datos.solicitudes.filter(s => s.usuarioCreador === usuarioActual.usuario);
+            if (misSolicitudes.length === 0) {
+                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-file-text-o text-4xl mb-3"></i><p>No tienes solicitudes creadas</p><p class="text-sm mt-1">¡Crea una nueva usando el formulario arriba!</p></div>`;
+                return;
+            }
+
+            contenedor.innerHTML = misSolicitudes.map((s) => {
+                const indiceReal = datos.solicitudes.indexOf(s);
+                return `<div class="mb-3 p-3 border rounded bg-white solicitud-propia">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <strong>${s.solicitante}</strong> | Área: ${s.area}<br>
+                            Fecha: ${s.fecha} | Urgencia: <span class="font-semibold ${s.urgencia === 'Alta' ? 'text-red-600' : s.urgencia === 'Media' ? 'text-yellow-600' : 'text-green-600'}">${s.urgencia}</span><br>
+                            ${s.fechaCreacion ? `<small class="text-gray-400">📅 Creado: ${new Date(s.fechaCreacion).toLocaleString()}</small>` : ''}
+                            ${s.id ? `<small class="text-gray-400">🆔 ID: ${s.id}</small>` : ''}
+                        </div>
+                        <span class="badge-propia">Tu solicitud</span>
+                    </div>
+                    <div class="mt-2">
+                        <button onclick="editarRegistro('solicitudes',${indiceReal})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                        <button onclick="enviarSolicitudWhatsApp(${indiceReal})" class="text-green-600 text-sm mt-2 mr-3">📱 WhatsApp</button>
+                        <button onclick="imprimirSolicitud(${indiceReal})" class="text-indigo-600 text-sm mt-2 mr-3">🖨️ Imprimir</button>
+                        <button onclick="eliminarRegistro('solicitudes',${indiceReal})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function actualizarListaEventos() {
+            const contenedor = document.getElementById('listaEventos');
+            const esAdmin = usuarioActual && usuarioActual.tipo === 'mantenimiento';
+
+            if (datos.eventos.length === 0) {
+                contenedor.innerHTML = esAdmin ? 'Sin eventos registrados' : 'No hay eventos creados';
+                return;
+            }
+
+            if (esAdmin) {
+                contenedor.innerHTML = datos.eventos.map((e, i) => {
+                    const esPropio = e.usuarioCreador === usuarioActual.usuario;
+                    return `<div class="mb-3 p-3 border rounded bg-white ${esPropio ? 'evento-propio' : 'evento-otro'}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <strong>${e.nombre}</strong><br>
+                                Solicitud: ${e.fechaSolicitud} | Fecha evento: ${e.fechaEvento}<br>
+                                Solicitante: ${e.solicitante} | Lugar: ${e.lugar}<br>
+                                ${e.usuarioCreador ? `<small class="text-gray-500">👤 Creado por: ${e.usuarioCreador}</small><br>` : ''}
+                                ${e.id ? `<small class="text-gray-400">🆔 ID: ${e.id}</small>` : ''}
+                            </div>
+                            ${esPropio ? '<span class="badge-evento-propio">Tu evento</span>' : '<span class="badge-otra">De otro usuario</span>'}
+                        </div>
+                        <div class="mt-2">
+                            <button onclick="editarRegistro('eventos',${i})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                            <button onclick="enviarEventoWhatsApp(${i})" class="text-green-600 text-sm mt-2 mr-3">📱 WhatsApp</button>
+                            <button onclick="imprimirEvento(${i})" class="text-indigo-600 text-sm mt-2 mr-3">🖨️ Imprimir</button>
+                            <button onclick="eliminarRegistro('eventos',${i})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                        </div>
+                    </div>`;
+                }).join('');
+                return;
+            }
+
+            const misEventos = datos.eventos.filter(e => e.usuarioCreador === usuarioActual.usuario);
+            if (misEventos.length === 0) {
+                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-calendar text-4xl mb-3"></i><p>No tienes eventos creados</p><p class="text-sm mt-1">¡Crea uno usando el formulario arriba!</p></div>`;
+                return;
+            }
+
+            contenedor.innerHTML = misEventos.map((e) => {
+                const indiceReal = datos.eventos.indexOf(e);
+                return `<div class="mb-3 p-3 border rounded bg-white evento-propio">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <strong>${e.nombre}</strong><br>
+                            Solicitud: ${e.fechaSolicitud} | Fecha evento: ${e.fechaEvento}<br>
+                            Solicitante: ${e.solicitante} | Lugar: ${e.lugar}<br>
+                            ${e.id ? `<small class="text-gray-400">🆔 ID: ${e.id}</small>` : ''}
+                        </div>
+                        <span class="badge-evento-propio">Tu evento</span>
+                    </div>
+                    <div class="mt-2">
+                        <button onclick="editarRegistro('eventos',${indiceReal})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                        <button onclick="enviarEventoWhatsApp(${indiceReal})" class="text-green-600 text-sm mt-2 mr-3">📱 WhatsApp</button>
+                        <button onclick="imprimirEvento(${indiceReal})" class="text-indigo-600 text-sm mt-2 mr-3">🖨️ Imprimir</button>
+                        <button onclick="eliminarRegistro('eventos',${indiceReal})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ===== BOTÓN DE BACKUP =====
+        function mostrarBotonBackup() {
+            const btn = document.getElementById('btn-backup');
+            if (usuarioActual && usuarioActual.tipo === 'mantenimiento') {
+                btn.style.display = 'inline-block';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        async function hacerBackup() {
+            const resultado = await apiPost('/api/backup', {});
+            if (resultado && resultado.success) {
+                showToast('✅ Backup creado correctamente', 'success');
+            } else {
+                showToast('❌ Error al crear backup', 'error');
+            }
+        }
+
+        // Crear botón de backup
+        const btnBackup = document.createElement('button');
+        btnBackup.textContent = '💾 Backup';
+        btnBackup.className = 'text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600';
+        btnBackup.onclick = hacerBackup;
+        btnBackup.id = 'btn-backup';
+        btnBackup.style.display = 'none';
+        document.querySelector('nav .flex.items-center.gap-3').appendChild(btnBackup);
+
+        // ===== EXPORTAR E IMPORTAR EXCEL =====
+        function exportarTodoExcel() {
+            const libro = XLSX.utils.book_new();
+
+            const hojaAreas = XLSX.utils.json_to_sheet(datos.areas.map(a => ({
+                Nombre: a.nombre,
+                Puesto: a.puesto,
+                Areas: a.areas,
+                Funciones: a.funciones,
+                Lunes_Entrada: a.horario.lunes.entrada,
+                Lunes_Salida: a.horario.lunes.salida,
+                Martes_Entrada: a.horario.martes.entrada,
+                Martes_Salida: a.horario.martes.salida,
+                Miércoles_Entrada: a.horario.miercoles.entrada,
+                Miércoles_Salida: a.horario.miercoles.salida,
+                Jueves_Entrada: a.horario.jueves.entrada,
+                Jueves_Salida: a.horario.jueves.salida,
+                Viernes_Entrada: a.horario.viernes.entrada,
+                Viernes_Salida: a.horario.viernes.salida,
+                Sábado_Entrada: a.horario.sabado.entrada,
+                Sábado_Salida: a.horario.sabado.salida,
+                Domingo_Entrada: a.horario.domingo.entrada,
+                Domingo_Salida: a.horario.domingo.salida
+            })));
+            XLSX.utils.book_append_sheet(libro, hojaAreas, "Personal y Horarios");
+
+            const hojaIncidencias = XLSX.utils.json_to_sheet(datos.incidencias);
+            XLSX.utils.book_append_sheet(libro, hojaIncidencias, "Incidencias");
+
+            const hojaSolicitudes = XLSX.utils.json_to_sheet(datos.solicitudes);
+            XLSX.utils.book_append_sheet(libro, hojaSolicitudes, "Solicitudes");
+
+            const hojaEventos = XLSX.utils.json_to_sheet(datos.eventos);
+            XLSX.utils.book_append_sheet(libro, hojaEventos, "Eventos");
+
+            XLSX.writeFile(libro, `Sistema_Mantenimiento_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Excel exportado correctamente', 'success');
+        }
+
+        function importarDesdeExcel(e) {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+            const lector = new FileReader();
+            lector.onload = async function(evt) {
+                try {
+                    const contenido = evt.target.result;
+                    const libro = XLSX.read(contenido, { type: 'binary' });
+
+                    if (libro.SheetNames.includes("Personal y Horarios")) {
+                        const datosAreas = XLSX.utils.sheet_to_json(libro.Sheets["Personal y Horarios"]);
+                        datos.areas = datosAreas.map(a => ({
+                            nombre: a.Nombre || "",
+                            puesto: a.Puesto || "",
+                            areas: a.Areas || "",
+                            funciones: a.Funciones || "",
+                            horario: {
+                                lunes: { entrada: a.Lunes_Entrada || "", salida: a.Lunes_Salida || "" },
+                                martes: { entrada: a.Martes_Entrada || "", salida: a.Martes_Salida || "" },
+                                miercoles: { entrada: a.Miércoles_Entrada || "", salida: a.Miércoles_Salida || "" },
+                                jueves: { entrada: a.Jueves_Entrada || "", salida: a.Jueves_Salida || "" },
+                                viernes: { entrada: a.Viernes_Entrada || "", salida: a.Viernes_Salida || "" },
+                                sabado: { entrada: a.Sábado_Entrada || "", salida: a.Sábado_Salida || "" },
+                                domingo: { entrada: a.Domingo_Entrada || "", salida: a.Domingo_Salida || "" }
+                            }
+                        }));
+                    }
+
+                    if (libro.SheetNames.includes("Incidencias")) {
+                        datos.incidencias = XLSX.utils.sheet_to_json(libro.Sheets["Incidencias"]);
+                    }
+                    if (libro.SheetNames.includes("Solicitudes")) {
+                        datos.solicitudes = XLSX.utils.sheet_to_json(libro.Sheets["Solicitudes"]);
+                    }
+                    if (libro.SheetNames.includes("Eventos")) {
+                        datos.eventos = XLSX.utils.sheet_to_json(libro.Sheets["Eventos"]);
+                    }
+
+                    const resultado = await apiPost('/api/datos/completos', datos);
+                    if (resultado && resultado.success) {
+                        await cargarDatosServidor();
+                        actualizarListas();
+                        showToast('✅ Datos importados correctamente', 'success');
+                    }
+                } catch (error) {
+                    showToast('❌ Error al importar datos', 'error');
+                    console.error(error);
+                }
+            };
+            lector.readAsBinaryString(archivo);
+            e.target.value = '';
+        }
+
+        // ===== INICIALIZAR =====
+        async function inicializar() {
+            await cargarDatosServidor();
+            cargarListaEmpleados();
+            actualizarListas();
+
+            // Si ya hay usuario logueado, iniciar actualización automática
+            if (usuarioActual) {
+                document.getElementById('btn-refrescar').classList.remove('hidden');
+                document.getElementById('indicador-conexion').classList.remove('hidden');
+                iniciarActualizacionAutomatica();
+            }
+        }
+
+        inicializar();
+
+        console.log('✅ Sistema de Mantenimiento Escolar cargado correctamente');
+        console.log(`🌐 Conectado a: ${API_URL}`);
+        console.log(`👤 Usuario: ${usuarioActual ? usuarioActual.usuario : 'No autenticado'}`);
+        console.log('🔄 Actualización automática activa (cada 3 segundos)');
+    </script>
+</body>
+</html>
