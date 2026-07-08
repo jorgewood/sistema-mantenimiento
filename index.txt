@@ -189,6 +189,10 @@
             border-radius: 12px;
             display: inline-block;
         }
+        .incidencia-propia {
+            border-left: 4px solid #EF4444 !important;
+            background: #FEF2F2 !important;
+        }
         .indicador-online {
             display: inline-block;
             width: 10px;
@@ -199,14 +203,6 @@
         .indicador-online.verde {
             background: #22C55E;
             animation: pulse 2s infinite;
-        }
-        .indicador-online.amarillo {
-            background: #EAB308;
-            animation: pulse 1s infinite;
-        }
-        .indicador-online.rojo {
-            background: #EF4444;
-            animation: pulse 0.5s infinite;
         }
         @keyframes pulse {
             0% {
@@ -219,19 +215,6 @@
             }
             100% {
                 opacity: 1;
-                transform: scale(1);
-            }
-        }
-        .badge-nuevo {
-            animation: resaltar 0.5s ease;
-        }
-        @keyframes resaltar {
-            0% {
-                background: #FEF3C7;
-                transform: scale(1.02);
-            }
-            100% {
-                background: inherit;
                 transform: scale(1);
             }
         }
@@ -312,8 +295,8 @@
             <aside class="w-full md:w-64 bg-white rounded-lg shadow p-4 h-fit">
                 <h3 class="font-bold text-lg mb-3 text-colegio-azul">Módulos</h3>
                 <ul class="space-y-2" id="menu-principal">
-                    <li><button onclick="mostrarModulo('solicitudes')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-file-text mr-2"></i>Solicitudes de Servicio</button></li>
-                    <li><button onclick="mostrarModulo('eventos')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-calendar mr-2"></i>Eventos y Requerimientos</button></li>
+                    <li><button onclick="mostrarModulo('solicitudes')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-file-text mr-2"></i>Solicitudes</button></li>
+                    <li><button onclick="mostrarModulo('eventos')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-calendar mr-2"></i>Eventos</button></li>
                     <li id="opc-areas" class="hidden"><button onclick="mostrarModulo('areas')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-id-card mr-2"></i>Personal y Áreas</button></li>
                     <li id="opc-incidencias" class="hidden"><button onclick="mostrarModulo('incidencias')" class="w-full text-left px-3 py-2 rounded hover:bg-blue-50"><i class="fa fa-exclamation-triangle mr-2"></i>Incidencias</button></li>
                 </ul>
@@ -400,7 +383,7 @@
                         </div>
                     </form>
                     <h3 class="font-semibold mb-2">Listado de Personal</h3>
-                    <div id="listaAreas" class="border rounded p-3 bg-gray-50 text-sm"></div>
+                    <div id="listaAreas" class="border rounded p-3 bg-gray-50 text-sm scroll-custom"></div>
                 </section>
 
                 <!-- Módulo Eventos -->
@@ -441,7 +424,7 @@
 
                 <!-- Módulo Solicitudes -->
                 <section id="modulo-solicitudes" class="modulo hidden">
-                    <h2 class="text-2xl font-bold mb-4 text-colegio-verde">Solicitudes de Compra / Servicio</h2>
+                    <h2 class="text-2xl font-bold mb-4 text-colegio-verde">Solicitudes de Servicio</h2>
                     <form id="formSolicitudes" class="grid md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <label class="block mb-1 font-medium">Nombre del Solicitante</label>
@@ -510,7 +493,7 @@
                             <input type="number" id="cantidadHoras" min="0.5" step="0.5" class="w-full border rounded px-3 py-2">
                         </div>
                         <div id="campoHora" class="hidden">
-                            <label class="block mb-1 font-medium">Hora de salida / llegada</label>
+                            <label class="block mb-1 font-medium">Hora</label>
                             <input type="time" id="horaIncidencia" class="w-full border rounded px-3 py-2" onchange="analizarHorarioPermiso()">
                             <div id="infoHorario" class="text-xs text-blue-600 mt-1 hidden"></div>
                         </div>
@@ -518,8 +501,9 @@
                             <label class="block mb-1 font-medium">Observaciones</label>
                             <textarea id="obsIncidencia" rows="2" class="w-full border rounded px-3 py-2"></textarea>
                         </div>
-                        <div class="md:col-span-2">
-                            <button type="submit" class="bg-colegio-rojo text-white px-4 py-2 rounded hover:bg-red-700">Registrar Incidencia</button>
+                        <div class="md:col-span-2 flex flex-wrap gap-3">
+                            <button type="submit" id="btn-guardar-incidencia" class="bg-colegio-rojo text-white px-4 py-2 rounded hover:bg-red-700">Registrar Incidencia</button>
+                            <button type="button" id="btn-cancelar-incidencia" class="bg-gray-400 text-white px-4 py-2 rounded hidden" onclick="cancelarEdicion('incidencias')">Cancelar</button>
                         </div>
                     </form>
                     <h3 class="font-semibold mb-2">Listado de Incidencias</h3>
@@ -550,7 +534,7 @@
         let tipoEditando = null;
         let intervaloActualizacion = null;
         const WHATSAPP_NUMERO = "529993937934";
-        const TIEMPO_ACTUALIZACION = 3000; // 3 segundos
+        const TIEMPO_ACTUALIZACION = 3000;
 
         // ===== FUNCIONES DE API =====
         async function apiGet(endpoint) {
@@ -607,7 +591,7 @@
             }
         }
 
-        // ===== TOAST NOTIFICATIONS =====
+        // ===== TOAST =====
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -618,7 +602,7 @@
             }, 4000);
         }
 
-        // ===== CARGAR DATOS DEL SERVIDOR =====
+        // ===== CARGAR DATOS =====
         async function cargarDatosServidor() {
             const data = await apiGet('/api/datos');
             if (data) {
@@ -698,7 +682,6 @@
                         cargarLogoGuardado();
                     }
 
-                    // Mostrar botones de actualización
                     document.getElementById('btn-refrescar').classList.remove('hidden');
                     document.getElementById('indicador-conexion').classList.remove('hidden');
 
@@ -744,43 +727,19 @@
         // ===== ACTUALIZACIÓN AUTOMÁTICA =====
         async function verificarActualizaciones() {
             try {
-                const estadoAnterior = {
-                    solicitudes: JSON.stringify(datos.solicitudes || []),
-                    eventos: JSON.stringify(datos.eventos || []),
-                    areas: JSON.stringify(datos.areas || []),
-                    incidencias: JSON.stringify(datos.incidencias || [])
-                };
-
                 const nuevosDatos = await apiGet('/api/datos');
                 if (!nuevosDatos) return;
 
                 const hayCambios =
-                    JSON.stringify(nuevosDatos.solicitudes || []) !== estadoAnterior.solicitudes ||
-                    JSON.stringify(nuevosDatos.eventos || []) !== estadoAnterior.eventos;
+                    JSON.stringify(nuevosDatos.solicitudes || []) !== JSON.stringify(datos.solicitudes || []) ||
+                    JSON.stringify(nuevosDatos.eventos || []) !== JSON.stringify(datos.eventos || []) ||
+                    JSON.stringify(nuevosDatos.areas || []) !== JSON.stringify(datos.areas || []) ||
+                    JSON.stringify(nuevosDatos.incidencias || []) !== JSON.stringify(datos.incidencias || []);
 
                 if (hayCambios) {
-                    const cambios = {
-                        solicitudes: (nuevosDatos.solicitudes || []).length - (datos.solicitudes || []).length,
-                        eventos: (nuevosDatos.eventos || []).length - (datos.eventos || []).length
-                    };
-
                     datos = nuevosDatos;
                     actualizarListas();
-
-                    // Mostrar notificación de cambios
-                    let mensaje = '📥 Actualización automática: ';
-                    let partes = [];
-                    if (cambios.solicitudes !== 0) {
-                        partes.push(`${Math.abs(cambios.solicitudes)} solicitud(es) ${cambios.solicitudes > 0 ? 'nueva(s)' : 'eliminada(s)'}`);
-                    }
-                    if (cambios.eventos !== 0) {
-                        partes.push(`${Math.abs(cambios.eventos)} evento(s) ${cambios.eventos > 0 ? 'nuevo(s)' : 'eliminado(s)'}`);
-                    }
-                    if (partes.length > 0) {
-                        showToast(mensaje + partes.join(', '), 'info');
-                    } else {
-                        showToast('📥 Datos actualizados', 'info');
-                    }
+                    showToast('📥 Datos actualizados automáticamente', 'info');
                 }
             } catch (error) {
                 console.error('Error verificando actualizaciones:', error);
@@ -788,18 +747,14 @@
         }
 
         function iniciarActualizacionAutomatica() {
-            if (intervaloActualizacion) {
-                clearInterval(intervaloActualizacion);
-            }
+            if (intervaloActualizacion) clearInterval(intervaloActualizacion);
             intervaloActualizacion = setInterval(verificarActualizaciones, TIEMPO_ACTUALIZACION);
-            console.log(`✅ Actualización automática iniciada (cada ${TIEMPO_ACTUALIZACION/1000} segundos)`);
         }
 
         function detenerActualizacionAutomatica() {
             if (intervaloActualizacion) {
                 clearInterval(intervaloActualizacion);
                 intervaloActualizacion = null;
-                console.log('⏹️ Actualización automática detenida');
             }
         }
 
@@ -814,7 +769,7 @@
             showToast('✅ Datos actualizados manualmente', 'success');
         }
 
-        // ===== HORARIOS Y ANÁLISIS =====
+        // ===== HORARIOS =====
         function cargarListaEmpleados() {
             const select = document.getElementById('empIncidencia');
             select.innerHTML = '<option value="">Seleccionar empleado</option>';
@@ -886,7 +841,7 @@
             const logoHtml = datos.logo ? `<img src="${datos.logo}" class="logo-impresion">` : `<span>LOGO</span>`;
             const contenido = `
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">${logoHtml}</div>
-                <h2 style="text-align:center; font-weight:bold; font-size:14px;">SOLICITUD DE COMPRA</h2>
+                <h2 style="text-align:center; font-weight:bold; font-size:14px;">SOLICITUD DE SERVICIO</h2>
                 <h3 style="text-align:center; font-size:11px; margin:4px 0 8px;">MANTENIMIENTO</h3>
                 <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Fecha:</span><span class="recuadro" style="width:85px;">${s.fecha}</span></div>
                 <div style="display:grid; grid-template-columns:1fr auto; gap:5px; margin:4px 0;"><span>Solicitante:</span><span class="recuadro" style="width:210px;">${s.solicitante}</span></div>
@@ -919,8 +874,11 @@
         }
 
         // ===== FORMULARIOS =====
-        document.getElementById('formAreas').addEventListener('submit', async e => {
+
+        // ===== ÁREAS (CORREGIDO - actualiza sin duplicar) =====
+        document.getElementById('formAreas').addEventListener('submit', async function(e) {
             e.preventDefault();
+
             const horario = {
                 lunes: { entrada: document.getElementById('lunesEntrada').value, salida: document.getElementById('lunesSalida').value },
                 martes: { entrada: document.getElementById('martesEntrada').value, salida: document.getElementById('martesSalida').value },
@@ -930,6 +888,7 @@
                 sabado: { entrada: document.getElementById('sabadoEntrada').value, salida: document.getElementById('sabadoSalida').value },
                 domingo: { entrada: document.getElementById('domingoEntrada').value, salida: document.getElementById('domingoSalida').value }
             };
+
             const reg = {
                 nombre: document.getElementById('empleado').value.trim(),
                 puesto: document.getElementById('puesto').value,
@@ -938,42 +897,90 @@
                 horario: horario
             };
 
-            const resultado = await apiPost('/api/areas', reg);
+            let resultado;
+
+            // ===== EDITAR ÁREA =====
+            if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'area') {
+                // Actualizar en el servidor
+                const resultadoPut = await apiPut(`/api/areas/${idEditando}`, reg);
+                if (resultadoPut && resultadoPut.success) {
+                    await cargarDatosServidor();
+                    cancelarEdicion('areas');
+                    actualizarListas();
+                    showToast('✅ Personal actualizado correctamente', 'success');
+                } else {
+                    showToast('❌ Error al actualizar personal', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            // ===== CREAR NUEVA ÁREA =====
+            resultado = await apiPost('/api/areas', reg);
             if (resultado && resultado.success) {
                 await cargarDatosServidor();
                 cancelarEdicion('areas');
                 actualizarListas();
-                showToast('Personal registrado correctamente', 'success');
+                showToast('✅ Personal registrado correctamente', 'success');
             }
         });
 
-        document.getElementById('formIncidencias').addEventListener('submit', async e => {
+        // ===== INCIDENCIAS (CORREGIDO - permite editar) =====
+        document.getElementById('formIncidencias').addEventListener('submit', async function(e) {
             e.preventDefault();
+
             const idxEmp = parseInt(document.getElementById('empIncidencia').value);
             const tipo = document.getElementById('tipoIncidencia').value;
             const emp = datos.areas[idxEmp];
+
             const inc = {
-                empleado: emp.nombre,
-                puesto: emp.puesto,
+                empleado: emp ? emp.nombre : '',
+                puesto: emp ? emp.puesto : '',
                 tipo: tipo,
                 fechaInicio: document.getElementById('fechaInicio').value || "",
                 fechaFin: document.getElementById('fechaFin').value || "",
                 horas: document.getElementById('cantidadHoras').value || "",
                 hora: document.getElementById('horaIncidencia').value || "",
-                observaciones: document.getElementById('obsIncidencia').value || ""
+                observaciones: document.getElementById('obsIncidencia').value || "",
+                usuarioCreador: usuarioActual ? usuarioActual.usuario : 'anonimo'
             };
 
-            const resultado = await apiPost('/api/incidencias', inc);
+            let resultado;
+
+            // ===== EDITAR INCIDENCIA =====
+            if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'incidencia') {
+                const incidenciaOriginal = datos.incidencias[indiceEdicion];
+                if (usuarioActual.tipo !== 'mantenimiento' && incidenciaOriginal.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para modificar esta incidencia', 'error');
+                    return;
+                }
+
+                const resultadoPut = await apiPut(`/api/incidencias/${idEditando}`, inc);
+                if (resultadoPut && resultadoPut.success) {
+                    await cargarDatosServidor();
+                    cancelarEdicion('incidencias');
+                    actualizarListas();
+                    showToast('✅ Incidencia actualizada correctamente', 'success');
+                } else {
+                    showToast('❌ Error al actualizar incidencia', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            // ===== CREAR NUEVA INCIDENCIA =====
+            resultado = await apiPost('/api/incidencias', inc);
             if (resultado && resultado.success) {
                 await cargarDatosServidor();
                 e.target.reset();
                 mostrarCamposIncidencia();
                 document.getElementById('infoHorario').classList.add('hidden');
                 actualizarListas();
-                showToast('Incidencia registrada correctamente', 'success');
+                showToast('✅ Incidencia registrada correctamente', 'success');
             }
         });
 
+        // ===== EVENTOS (CORREGIDO) =====
         document.getElementById('formEventos').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -989,6 +996,7 @@
 
             let resultado;
 
+            // ===== EDITAR EVENTO =====
             if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'evento') {
                 const eventoOriginal = datos.eventos[indiceEdicion];
                 if (usuarioActual.tipo !== 'mantenimiento' && eventoOriginal.usuarioCreador !== usuarioActual.usuario) {
@@ -996,8 +1004,8 @@
                     return;
                 }
 
-                resultado = await apiPut(`/api/eventos/${idEditando}`, evento);
-                if (resultado && resultado.success) {
+                const resultadoPut = await apiPut(`/api/eventos/${idEditando}`, evento);
+                if (resultadoPut && resultadoPut.success) {
                     await cargarDatosServidor();
                     cancelarEdicion('eventos');
                     actualizarListas();
@@ -1009,17 +1017,17 @@
                 return;
             }
 
+            // ===== CREAR NUEVO EVENTO =====
             resultado = await apiPost('/api/eventos', evento);
             if (resultado && resultado.success) {
                 await cargarDatosServidor();
                 document.getElementById('formEventos').reset();
                 actualizarListas();
                 showToast('✅ Evento creado correctamente', 'success');
-            } else {
-                showToast('❌ Error al crear evento', 'error');
             }
         });
 
+        // ===== SOLICITUDES =====
         document.getElementById('formSolicitudes').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -1034,6 +1042,7 @@
 
             let resultado;
 
+            // ===== EDITAR SOLICITUD =====
             if (indiceEdicion !== null && idEditando !== null && tipoEditando === 'solicitud') {
                 const solicitudOriginal = datos.solicitudes[indiceEdicion];
                 if (usuarioActual.tipo !== 'mantenimiento' && solicitudOriginal.usuarioCreador !== usuarioActual.usuario) {
@@ -1041,8 +1050,8 @@
                     return;
                 }
 
-                resultado = await apiPut(`/api/solicitudes/${idEditando}`, solicitud);
-                if (resultado && resultado.success) {
+                const resultadoPut = await apiPut(`/api/solicitudes/${idEditando}`, solicitud);
+                if (resultadoPut && resultadoPut.success) {
                     await cargarDatosServidor();
                     cancelarEdicion('solicitudes');
                     actualizarListas();
@@ -1054,17 +1063,17 @@
                 return;
             }
 
+            // ===== CREAR NUEVA SOLICITUD =====
             resultado = await apiPost('/api/solicitudes', solicitud);
             if (resultado && resultado.success) {
                 await cargarDatosServidor();
                 document.getElementById('formSolicitudes').reset();
                 actualizarListas();
                 showToast('✅ Solicitud creada correctamente', 'success');
-            } else {
-                showToast('❌ Error al crear solicitud', 'error');
             }
         });
 
+        // ===== USUARIOS =====
         document.getElementById('formUsuarios').addEventListener('submit', async e => {
             e.preventDefault();
             const nuevo = {
@@ -1084,8 +1093,97 @@
             }
         });
 
-        // ===== EDICIÓN =====
+        // ===== EDICIÓN (CORREGIDO) =====
         function editarRegistro(modulo, indice) {
+            // ===== ÁREAS =====
+            if (modulo === 'areas') {
+                const reg = datos.areas[indice];
+                if (usuarioActual.tipo !== 'mantenimiento') {
+                    showToast('❌ Solo administradores pueden editar personal', 'error');
+                    return;
+                }
+
+                indiceEdicion = indice;
+                idEditando = reg.id || reg._id;
+                tipoEditando = 'area';
+
+                if (!idEditando) {
+                    showToast('❌ Error: ID de personal no encontrado', 'error');
+                    return;
+                }
+
+                document.getElementById('empleado').value = reg.nombre;
+                document.getElementById('puesto').value = reg.puesto;
+                document.getElementById('areasAsignadas').value = reg.areas;
+                document.getElementById('funciones').value = reg.funciones;
+                if (reg.horario) {
+                    document.getElementById('lunesEntrada').value = reg.horario.lunes.entrada || "";
+                    document.getElementById('lunesSalida').value = reg.horario.lunes.salida || "";
+                    document.getElementById('martesEntrada').value = reg.horario.martes.entrada || "";
+                    document.getElementById('martesSalida').value = reg.horario.martes.salida || "";
+                    document.getElementById('miercolesEntrada').value = reg.horario.miercoles.entrada || "";
+                    document.getElementById('miercolesSalida').value = reg.horario.miercoles.salida || "";
+                    document.getElementById('juevesEntrada').value = reg.horario.jueves.entrada || "";
+                    document.getElementById('juevesSalida').value = reg.horario.jueves.salida || "";
+                    document.getElementById('viernesEntrada').value = reg.horario.viernes.entrada || "";
+                    document.getElementById('viernesSalida').value = reg.horario.viernes.salida || "";
+                    document.getElementById('sabadoEntrada').value = reg.horario.sabado.entrada || "";
+                    document.getElementById('sabadoSalida').value = reg.horario.sabado.salida || "";
+                    document.getElementById('domingoEntrada').value = reg.horario.domingo.entrada || "";
+                    document.getElementById('domingoSalida').value = reg.horario.domingo.salida || "";
+                }
+
+                document.getElementById('btn-guardar-area').textContent = "Actualizar";
+                document.getElementById('btn-cancelar-area').classList.remove('hidden');
+                document.getElementById('formAreas').classList.add('editando');
+                showToast('✏️ Editando personal', 'info');
+                return;
+            }
+
+            // ===== INCIDENCIAS (NUEVO) =====
+            if (modulo === 'incidencias') {
+                const reg = datos.incidencias[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && reg.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para editar esta incidencia', 'error');
+                    return;
+                }
+
+                indiceEdicion = indice;
+                idEditando = reg.id || reg._id;
+                tipoEditando = 'incidencia';
+
+                if (!idEditando) {
+                    showToast('❌ Error: ID de incidencia no encontrado', 'error');
+                    return;
+                }
+
+                // Buscar el empleado en el select
+                const selectEmp = document.getElementById('empIncidencia');
+                for (let i = 0; i < selectEmp.options.length; i++) {
+                    if (selectEmp.options[i].text === reg.empleado) {
+                        selectEmp.value = i;
+                        break;
+                    }
+                }
+
+                document.getElementById('tipoIncidencia').value = reg.tipo;
+                document.getElementById('fechaInicio').value = reg.fechaInicio || "";
+                document.getElementById('fechaFin').value = reg.fechaFin || "";
+                document.getElementById('cantidadHoras').value = reg.horas || "";
+                document.getElementById('horaIncidencia').value = reg.hora || "";
+                document.getElementById('obsIncidencia').value = reg.observaciones || "";
+
+                // Mostrar campos según tipo
+                mostrarCamposIncidencia();
+
+                document.getElementById('btn-guardar-incidencia').textContent = "Actualizar";
+                document.getElementById('btn-cancelar-incidencia').classList.remove('hidden');
+                document.getElementById('formIncidencias').classList.add('editando');
+                showToast('✏️ Editando incidencia', 'info');
+                return;
+            }
+
+            // ===== SOLICITUDES =====
             if (modulo === 'solicitudes') {
                 const reg = datos.solicitudes[indice];
                 if (usuarioActual.tipo !== 'mantenimiento' && reg.usuarioCreador !== usuarioActual.usuario) {
@@ -1115,6 +1213,7 @@
                 return;
             }
 
+            // ===== EVENTOS =====
             if (modulo === 'eventos') {
                 const reg = datos.eventos[indice];
                 if (usuarioActual.tipo !== 'mantenimiento' && reg.usuarioCreador !== usuarioActual.usuario) {
@@ -1144,35 +1243,9 @@
                 showToast('✏️ Editando evento', 'info');
                 return;
             }
-
-            if (modulo === 'areas') {
-                indiceEdicion = indice;
-                const reg = datos.areas[indice];
-                document.getElementById('empleado').value = reg.nombre;
-                document.getElementById('puesto').value = reg.puesto;
-                document.getElementById('areasAsignadas').value = reg.areas;
-                document.getElementById('funciones').value = reg.funciones;
-                if (reg.horario) {
-                    document.getElementById('lunesEntrada').value = reg.horario.lunes.entrada || "";
-                    document.getElementById('lunesSalida').value = reg.horario.lunes.salida || "";
-                    document.getElementById('martesEntrada').value = reg.horario.martes.entrada || "";
-                    document.getElementById('martesSalida').value = reg.horario.martes.salida || "";
-                    document.getElementById('miercolesEntrada').value = reg.horario.miercoles.entrada || "";
-                    document.getElementById('miercolesSalida').value = reg.horario.miercoles.salida || "";
-                    document.getElementById('juevesEntrada').value = reg.horario.jueves.entrada || "";
-                    document.getElementById('juevesSalida').value = reg.horario.jueves.salida || "";
-                    document.getElementById('viernesEntrada').value = reg.horario.viernes.entrada || "";
-                    document.getElementById('viernesSalida').value = reg.horario.viernes.salida || "";
-                    document.getElementById('sabadoEntrada').value = reg.horario.sabado.entrada || "";
-                    document.getElementById('sabadoSalida').value = reg.horario.sabado.salida || "";
-                    document.getElementById('domingoEntrada').value = reg.horario.domingo.entrada || "";
-                    document.getElementById('domingoSalida').value = reg.horario.domingo.salida || "";
-                }
-                document.getElementById('btn-guardar-area').textContent = "Actualizar";
-                document.getElementById('btn-cancelar-area').classList.remove('hidden');
-            }
         }
 
+        // ===== CANCELAR EDICIÓN =====
         function cancelarEdicion(modulo) {
             indiceEdicion = null;
             idEditando = null;
@@ -1180,38 +1253,45 @@
 
             document.getElementById('formSolicitudes').classList.remove('editando');
             document.getElementById('formEventos').classList.remove('editando');
+            document.getElementById('formAreas').classList.remove('editando');
+            document.getElementById('formIncidencias').classList.remove('editando');
 
-            if (modulo === 'areas') {
+            if (modulo === 'areas' || modulo === 'todos') {
                 document.getElementById('formAreas').reset();
                 document.getElementById('btn-guardar-area').textContent = "Guardar Registro";
                 document.getElementById('btn-cancelar-area').classList.add('hidden');
-            } else if (modulo === 'solicitudes') {
+            }
+            if (modulo === 'solicitudes' || modulo === 'todos') {
                 document.getElementById('formSolicitudes').reset();
                 document.getElementById('btn-guardar-solicitud').textContent = "Guardar";
                 document.getElementById('btn-cancelar-solicitud').classList.add('hidden');
-            } else if (modulo === 'eventos') {
+            }
+            if (modulo === 'eventos' || modulo === 'todos') {
                 document.getElementById('formEventos').reset();
                 document.getElementById('btn-guardar-evento').textContent = "Guardar";
                 document.getElementById('btn-cancelar-evento').classList.add('hidden');
+            }
+            if (modulo === 'incidencias' || modulo === 'todos') {
+                document.getElementById('formIncidencias').reset();
+                document.getElementById('btn-guardar-incidencia').textContent = "Registrar Incidencia";
+                document.getElementById('btn-cancelar-incidencia').classList.add('hidden');
+                document.getElementById('infoHorario').classList.add('hidden');
             }
         }
 
         // ===== ELIMINACIÓN =====
         async function eliminarRegistro(modulo, indice) {
+            // ===== SOLICITUDES =====
             if (modulo === 'solicitudes') {
                 const solicitud = datos.solicitudes[indice];
                 if (usuarioActual.tipo !== 'mantenimiento' && solicitud.usuarioCreador !== usuarioActual.usuario) {
                     showToast('❌ No tienes permiso para eliminar esta solicitud', 'error');
                     return;
                 }
-
                 if (!confirm(`¿Seguro que deseas eliminar esta solicitud de "${solicitud.solicitante}"?`)) return;
 
                 const idReal = solicitud.id || solicitud._id;
-                if (!idReal) {
-                    showToast('❌ Error: ID de solicitud no encontrado', 'error');
-                    return;
-                }
+                if (!idReal) { showToast('❌ Error: ID no encontrado', 'error'); return; }
 
                 const resultado = await apiDelete(`/api/solicitudes/${idReal}`);
                 if (resultado && resultado.success) {
@@ -1219,26 +1299,23 @@
                     actualizarListas();
                     showToast('✅ Solicitud eliminada correctamente', 'success');
                 } else {
-                    showToast('❌ Error al eliminar solicitud', 'error');
+                    showToast('❌ Error al eliminar', 'error');
                     await cargarDatosServidor();
                 }
                 return;
             }
 
+            // ===== EVENTOS =====
             if (modulo === 'eventos') {
                 const evento = datos.eventos[indice];
                 if (usuarioActual.tipo !== 'mantenimiento' && evento.usuarioCreador !== usuarioActual.usuario) {
                     showToast('❌ No tienes permiso para eliminar este evento', 'error');
                     return;
                 }
-
                 if (!confirm(`¿Seguro que deseas eliminar el evento "${evento.nombre}"?`)) return;
 
                 const idReal = evento.id || evento._id;
-                if (!idReal) {
-                    showToast('❌ Error: ID de evento no encontrado', 'error');
-                    return;
-                }
+                if (!idReal) { showToast('❌ Error: ID no encontrado', 'error'); return; }
 
                 const resultado = await apiDelete(`/api/eventos/${idReal}`);
                 if (resultado && resultado.success) {
@@ -1246,53 +1323,92 @@
                     actualizarListas();
                     showToast('✅ Evento eliminado correctamente', 'success');
                 } else {
-                    showToast('❌ Error al eliminar evento', 'error');
+                    showToast('❌ Error al eliminar', 'error');
                     await cargarDatosServidor();
                 }
                 return;
             }
 
-            if (usuarioActual.tipo !== 'mantenimiento') {
-                showToast('❌ Solo el administrador puede eliminar este registro', 'error');
+            // ===== INCIDENCIAS (NUEVO) =====
+            if (modulo === 'incidencias') {
+                const incidencia = datos.incidencias[indice];
+                if (usuarioActual.tipo !== 'mantenimiento' && incidencia.usuarioCreador !== usuarioActual.usuario) {
+                    showToast('❌ No tienes permiso para eliminar esta incidencia', 'error');
+                    return;
+                }
+                if (!confirm(`¿Seguro que deseas eliminar esta incidencia de "${incidencia.empleado}"?`)) return;
+
+                const idReal = incidencia.id || incidencia._id;
+                if (!idReal) { showToast('❌ Error: ID no encontrado', 'error'); return; }
+
+                const resultado = await apiDelete(`/api/incidencias/${idReal}`);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    actualizarListas();
+                    showToast('✅ Incidencia eliminada correctamente', 'success');
+                } else {
+                    showToast('❌ Error al eliminar', 'error');
+                    await cargarDatosServidor();
+                }
                 return;
             }
 
-            const nombres = {
-                'areas': 'registro de personal',
-                'incidencias': 'incidencia',
-                'usuarios': 'usuario'
-            };
+            // ===== ÁREAS =====
+            if (modulo === 'areas') {
+                if (usuarioActual.tipo !== 'mantenimiento') {
+                    showToast('❌ Solo administradores pueden eliminar personal', 'error');
+                    return;
+                }
+                if (!confirm('¿Seguro que deseas eliminar este registro de personal?')) return;
 
+                const areaId = datos.areas[indice].id || indice;
+                const resultado = await apiDelete(`/api/areas/${areaId}`);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    actualizarListas();
+                    showToast('✅ Personal eliminado correctamente', 'success');
+                } else {
+                    showToast('❌ Error al eliminar', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
+            }
+
+            // ===== USUARIOS =====
             if (modulo === 'usuarios') {
+                if (usuarioActual.tipo !== 'mantenimiento') {
+                    showToast('❌ Solo administradores pueden eliminar usuarios', 'error');
+                    return;
+                }
                 const usuario = datos.usuarios[indice];
                 if (usuario.usuario === 'admin') {
-                    showToast('❌ No se puede eliminar el usuario administrador principal', 'error');
+                    showToast('❌ No se puede eliminar el admin principal', 'error');
                     return;
                 }
                 if (usuario.usuario === usuarioActual.usuario) {
                     showToast('❌ No puedes eliminar tu propio usuario', 'error');
                     return;
                 }
-            }
+                if (!confirm(`¿Seguro que deseas eliminar al usuario "${usuario.usuario}"?`)) return;
 
-            if (!confirm(`¿Seguro que deseas eliminar este ${nombres[modulo] || 'registro'}?`)) return;
-
-            datos[modulo].splice(indice, 1);
-            const resultado = await apiPost('/api/datos/completos', datos);
-
-            if (resultado && resultado.success) {
-                await cargarDatosServidor();
-                actualizarListas();
-                showToast(`✅ ${nombres[modulo] || 'Registro'} eliminado correctamente`, 'success');
-            } else {
-                showToast('❌ Error al eliminar, recargando datos...', 'error');
-                await cargarDatosServidor();
+                const userId = usuario.id || indice;
+                const resultado = await apiDelete(`/api/usuarios/${userId}`);
+                if (resultado && resultado.success) {
+                    await cargarDatosServidor();
+                    actualizarListas();
+                    showToast('✅ Usuario eliminado correctamente', 'success');
+                } else {
+                    showToast('❌ Error al eliminar', 'error');
+                    await cargarDatosServidor();
+                }
+                return;
             }
         }
 
+        // ===== WHATSAPP =====
         function enviarSolicitudWhatsApp(indice) {
             const s = datos.solicitudes[indice];
-            const msg = `*SOLICITUD DE COMPRA*%0AFecha: ${s.fecha}%0ASolicitante: ${s.solicitante}%0AÁrea: ${s.area}%0AUrgencia: ${s.urgencia}%0A%0A*Descripción:*%0A${s.descripcion}`;
+            const msg = `*SOLICITUD DE SERVICIO*%0AFecha: ${s.fecha}%0ASolicitante: ${s.solicitante}%0AÁrea: ${s.area}%0AUrgencia: ${s.urgencia}%0A%0A*Descripción:*%0A${s.descripcion}`;
             window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`, '_blank');
         }
 
@@ -1330,24 +1446,11 @@
             // Eventos
             actualizarListaEventos();
 
-            // Incidencias
-            document.getElementById('listaIncidencias').innerHTML = datos.incidencias.length ?
-                datos.incidencias.map((inc, i) => {
-                    let detalle = `Tipo: ${inc.tipo.replace('_', ' ')}<br>`;
-                    if (inc.fechaInicio) detalle += `Inicio: ${inc.fechaInicio} `;
-                    if (inc.fechaFin) detalle += `| Fin: ${inc.fechaFin}<br>`;
-                    if (inc.hora) detalle += `Hora: ${inc.hora} `;
-                    if (inc.horas) detalle += `| Horas: ${inc.horas}<br>`;
-                    if (inc.observaciones) detalle += `Observaciones: ${inc.observaciones}<br>`;
-                    return `<div class="mb-3 p-3 border rounded bg-white">
-                        <strong>${inc.empleado}</strong> - ${inc.puesto}<br>
-                        ${detalle}
-                        <button onclick="eliminarRegistro('incidencias', ${i})" class="text-red-500 text-sm mt-2">Eliminar</button>
-                    </div>`;
-                }).join('') :
-                'Sin incidencias registradas';
+            // Incidencias (actualizado)
+            actualizarListaIncidencias();
         }
 
+        // ===== SOLICITUDES =====
         function actualizarListaSolicitudes() {
             const contenedor = document.getElementById('listaSolicitudes');
             const esAdmin = usuarioActual && usuarioActual.tipo === 'mantenimiento';
@@ -1367,7 +1470,6 @@
                                 Fecha: ${s.fecha} | Urgencia: <span class="font-semibold ${s.urgencia === 'Alta' ? 'text-red-600' : s.urgencia === 'Media' ? 'text-yellow-600' : 'text-green-600'}">${s.urgencia}</span><br>
                                 ${s.usuarioCreador ? `<small class="text-gray-500">👤 Creado por: ${s.usuarioCreador}</small><br>` : ''}
                                 ${s.fechaCreacion ? `<small class="text-gray-400">📅 ${new Date(s.fechaCreacion).toLocaleString()}</small>` : ''}
-                                ${s.id ? `<small class="text-gray-400">🆔 ID: ${s.id}</small>` : ''}
                             </div>
                             ${esPropia ? '<span class="badge-propia">Tu solicitud</span>' : '<span class="badge-otra">De otro usuario</span>'}
                         </div>
@@ -1384,7 +1486,7 @@
 
             const misSolicitudes = datos.solicitudes.filter(s => s.usuarioCreador === usuarioActual.usuario);
             if (misSolicitudes.length === 0) {
-                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-file-text-o text-4xl mb-3"></i><p>No tienes solicitudes creadas</p><p class="text-sm mt-1">¡Crea una nueva usando el formulario arriba!</p></div>`;
+                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-file-text-o text-4xl mb-3"></i><p>No tienes solicitudes creadas</p></div>`;
                 return;
             }
 
@@ -1395,8 +1497,7 @@
                         <div>
                             <strong>${s.solicitante}</strong> | Área: ${s.area}<br>
                             Fecha: ${s.fecha} | Urgencia: <span class="font-semibold ${s.urgencia === 'Alta' ? 'text-red-600' : s.urgencia === 'Media' ? 'text-yellow-600' : 'text-green-600'}">${s.urgencia}</span><br>
-                            ${s.fechaCreacion ? `<small class="text-gray-400">📅 Creado: ${new Date(s.fechaCreacion).toLocaleString()}</small>` : ''}
-                            ${s.id ? `<small class="text-gray-400">🆔 ID: ${s.id}</small>` : ''}
+                            ${s.fechaCreacion ? `<small class="text-gray-400">📅 ${new Date(s.fechaCreacion).toLocaleString()}</small>` : ''}
                         </div>
                         <span class="badge-propia">Tu solicitud</span>
                     </div>
@@ -1410,6 +1511,7 @@
             }).join('');
         }
 
+        // ===== EVENTOS =====
         function actualizarListaEventos() {
             const contenedor = document.getElementById('listaEventos');
             const esAdmin = usuarioActual && usuarioActual.tipo === 'mantenimiento';
@@ -1429,7 +1531,6 @@
                                 Solicitud: ${e.fechaSolicitud} | Fecha evento: ${e.fechaEvento}<br>
                                 Solicitante: ${e.solicitante} | Lugar: ${e.lugar}<br>
                                 ${e.usuarioCreador ? `<small class="text-gray-500">👤 Creado por: ${e.usuarioCreador}</small><br>` : ''}
-                                ${e.id ? `<small class="text-gray-400">🆔 ID: ${e.id}</small>` : ''}
                             </div>
                             ${esPropio ? '<span class="badge-evento-propio">Tu evento</span>' : '<span class="badge-otra">De otro usuario</span>'}
                         </div>
@@ -1446,7 +1547,7 @@
 
             const misEventos = datos.eventos.filter(e => e.usuarioCreador === usuarioActual.usuario);
             if (misEventos.length === 0) {
-                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-calendar text-4xl mb-3"></i><p>No tienes eventos creados</p><p class="text-sm mt-1">¡Crea uno usando el formulario arriba!</p></div>`;
+                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-calendar text-4xl mb-3"></i><p>No tienes eventos creados</p></div>`;
                 return;
             }
 
@@ -1457,8 +1558,7 @@
                         <div>
                             <strong>${e.nombre}</strong><br>
                             Solicitud: ${e.fechaSolicitud} | Fecha evento: ${e.fechaEvento}<br>
-                            Solicitante: ${e.solicitante} | Lugar: ${e.lugar}<br>
-                            ${e.id ? `<small class="text-gray-400">🆔 ID: ${e.id}</small>` : ''}
+                            Solicitante: ${e.solicitante} | Lugar: ${e.lugar}
                         </div>
                         <span class="badge-evento-propio">Tu evento</span>
                     </div>
@@ -1467,6 +1567,74 @@
                         <button onclick="enviarEventoWhatsApp(${indiceReal})" class="text-green-600 text-sm mt-2 mr-3">📱 WhatsApp</button>
                         <button onclick="imprimirEvento(${indiceReal})" class="text-indigo-600 text-sm mt-2 mr-3">🖨️ Imprimir</button>
                         <button onclick="eliminarRegistro('eventos',${indiceReal})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ===== INCIDENCIAS (NUEVO) =====
+        function actualizarListaIncidencias() {
+            const contenedor = document.getElementById('listaIncidencias');
+            const esAdmin = usuarioActual && usuarioActual.tipo === 'mantenimiento';
+
+            if (datos.incidencias.length === 0) {
+                contenedor.innerHTML = esAdmin ? 'Sin incidencias registradas' : 'No hay incidencias creadas';
+                return;
+            }
+
+            if (esAdmin) {
+                contenedor.innerHTML = datos.incidencias.map((inc, i) => {
+                    const esPropia = inc.usuarioCreador === usuarioActual.usuario;
+                    let detalle = `Tipo: ${inc.tipo.replace('_', ' ')}<br>`;
+                    if (inc.fechaInicio) detalle += `Inicio: ${inc.fechaInicio} `;
+                    if (inc.fechaFin) detalle += `| Fin: ${inc.fechaFin}<br>`;
+                    if (inc.hora) detalle += `Hora: ${inc.hora} `;
+                    if (inc.horas) detalle += `| Horas: ${inc.horas}<br>`;
+                    if (inc.observaciones) detalle += `Observaciones: ${inc.observaciones}<br>`;
+                    return `<div class="mb-3 p-3 border rounded bg-white ${esPropia ? 'incidencia-propia' : ''}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <strong>${inc.empleado}</strong> - ${inc.puesto}<br>
+                                ${detalle}
+                                ${inc.usuarioCreador ? `<small class="text-gray-500">👤 Creado por: ${inc.usuarioCreador}</small><br>` : ''}
+                            </div>
+                            ${esPropia ? '<span class="badge-propia">Tu incidencia</span>' : '<span class="badge-otra">De otro usuario</span>'}
+                        </div>
+                        <div class="mt-2">
+                            <button onclick="editarRegistro('incidencias',${i})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                            <button onclick="eliminarRegistro('incidencias',${i})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
+                        </div>
+                    </div>`;
+                }).join('');
+                return;
+            }
+
+            // Usuario normal - solo sus incidencias
+            const misIncidencias = datos.incidencias.filter(inc => inc.usuarioCreador === usuarioActual.usuario);
+            if (misIncidencias.length === 0) {
+                contenedor.innerHTML = `<div class="text-center py-8 text-gray-500"><i class="fa fa-exclamation-triangle text-4xl mb-3"></i><p>No tienes incidencias creadas</p></div>`;
+                return;
+            }
+
+            contenedor.innerHTML = misIncidencias.map((inc) => {
+                const indiceReal = datos.incidencias.indexOf(inc);
+                let detalle = `Tipo: ${inc.tipo.replace('_', ' ')}<br>`;
+                if (inc.fechaInicio) detalle += `Inicio: ${inc.fechaInicio} `;
+                if (inc.fechaFin) detalle += `| Fin: ${inc.fechaFin}<br>`;
+                if (inc.hora) detalle += `Hora: ${inc.hora} `;
+                if (inc.horas) detalle += `| Horas: ${inc.horas}<br>`;
+                if (inc.observaciones) detalle += `Observaciones: ${inc.observaciones}<br>`;
+                return `<div class="mb-3 p-3 border rounded bg-white incidencia-propia">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <strong>${inc.empleado}</strong> - ${inc.puesto}<br>
+                            ${detalle}
+                        </div>
+                        <span class="badge-propia">Tu incidencia</span>
+                    </div>
+                    <div class="mt-2">
+                        <button onclick="editarRegistro('incidencias',${indiceReal})" class="text-blue-600 text-sm mt-2 mr-3">✏️ Editar</button>
+                        <button onclick="eliminarRegistro('incidencias',${indiceReal})" class="text-red-500 text-sm mt-2">🗑️ Eliminar</button>
                     </div>
                 </div>`;
             }).join('');
@@ -1536,7 +1704,7 @@
             XLSX.utils.book_append_sheet(libro, hojaEventos, "Eventos");
 
             XLSX.writeFile(libro, `Sistema_Mantenimiento_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast('Excel exportado correctamente', 'success');
+            showToast('✅ Excel exportado correctamente', 'success');
         }
 
         function importarDesdeExcel(e) {
@@ -1598,7 +1766,6 @@
             cargarListaEmpleados();
             actualizarListas();
 
-            // Si ya hay usuario logueado, iniciar actualización automática
             if (usuarioActual) {
                 document.getElementById('btn-refrescar').classList.remove('hidden');
                 document.getElementById('indicador-conexion').classList.remove('hidden');
